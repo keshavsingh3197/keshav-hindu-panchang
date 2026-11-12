@@ -38,6 +38,7 @@ builder.Services.AddCors(options =>
                 var uri = new Uri(origin);
                 if (uri.Host.EndsWith("keshavsingh.in", StringComparison.OrdinalIgnoreCase)) return true;
                 if (uri.Host.EndsWith("github.io", StringComparison.OrdinalIgnoreCase)) return true;
+                if (uri.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase)) return true;
                 if (builder.Environment.IsDevelopment() && (uri.Host == "localhost" || uri.Host == "127.0.0.1")) return true;
                 return false;
             }
@@ -89,15 +90,6 @@ if (app.Environment.IsDevelopment())
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Dedicated health endpoint for Render health checks
-app.MapGet("/health", () => Results.Ok(new
-{
-    status = "Healthy",
-    service = "HinduPanchang.Api",
-    version = "1.0.0",
-    time = DateTime.UtcNow
-}));
 
 app.MapControllers();
 
