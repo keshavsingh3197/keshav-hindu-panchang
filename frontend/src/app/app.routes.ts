@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { editorGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -25,8 +24,7 @@ export const routes: Routes = [
   },
   {
     path: 'manage',
-    loadComponent: () => import('./features/manage-content/manage-content.component').then(m => m.ManageContentComponent),
-    canActivate: [editorGuard]
+    loadComponent: () => import('./features/manage-content/manage-content.component').then(m => m.ManageContentComponent)
   },
   {
     path: '**',

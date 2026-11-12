@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PanchangService } from '../../core/services/panchang.service';
 import { FestivalItem } from '../../core/models/panchang.models';
@@ -20,7 +20,7 @@ import { FestivalItem } from '../../core/models/panchang.models';
 
       <!-- Festivals Grid -->
       <section class="festivals-grid">
-        @for (fest of festivals; track fest.id) {
+        @for (fest of festivals(); track fest.id) {
           <div class="fest-card">
             <div class="fest-header">
               <span class="tithi-tag">{{ fest.monthVedic }} • {{ fest.tithi }}</span>
@@ -185,10 +185,10 @@ import { FestivalItem } from '../../core/models/panchang.models';
 export class FestivalsComponent implements OnInit {
   private panchangService = inject(PanchangService);
 
-  festivals: FestivalItem[] = [];
+  readonly festivals = signal<FestivalItem[]>([]);
 
   ngOnInit(): void {
-    this.panchangService.getUpcomingFestivals().subscribe(f => this.festivals = f);
+    this.panchangService.getUpcomingFestivals().subscribe(f => this.festivals.set(f));
   }
 
   openAffiliate(item: string): void {
