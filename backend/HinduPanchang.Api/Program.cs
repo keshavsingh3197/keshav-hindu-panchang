@@ -5,7 +5,7 @@ using HinduPanchang.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Port injection from environment
+// Port injection from environment (e.g. Render $PORT)
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
 {
@@ -21,8 +21,8 @@ builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
         new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Native .NET OpenAPI
+builder.Services.AddOpenApi();
 
 // CORS Policy for Keshav Ecosystem
 const string CorsPolicy = "HinduPanchangCors";
@@ -83,13 +83,21 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
 }
 
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Dedicated health endpoint for Render health checks
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "Healthy",
+    service = "HinduPanchang.Api",
+    version = "1.0.0",
+    time = DateTime.UtcNow
+}));
 
 app.MapControllers();
 
