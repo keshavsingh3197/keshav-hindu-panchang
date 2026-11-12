@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PanchangService } from '../../core/services/panchang.service';
+import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { SpiritualVideo } from '../../core/models/video.models';
 
 @Component({
@@ -54,7 +55,7 @@ import { SpiritualVideo } from '../../core/models/video.models';
 
       <!-- Category Filter Tabs -->
       <div class="category-tabs">
-        @for (cat of categories; track cat) {
+        @for (cat of categories(); track cat) {
           <button 
             type="button"
             [class.active]="selectedCategory() === cat" 
@@ -96,7 +97,7 @@ import { SpiritualVideo } from '../../core/models/video.models';
             2D/3D एनिमेटेड कहानियां, भजन वीडियो एवं वॉयसओवर तैयार कर सकते हैं।
           </p>
         </div>
-        <a href="https://studio.keshavsingh.in" target="_blank" rel="noopener" class="btn-funnel-cta">
+        <a [href]="ecosystem.studioPortalUrl()" target="_blank" rel="noopener" class="btn-funnel-cta">
           🎬 Open AnimStudio AI Free →
         </a>
       </section>
@@ -365,14 +366,20 @@ import { SpiritualVideo } from '../../core/models/video.models';
 export class VideoHubComponent implements OnInit {
   private panchangService = inject(PanchangService);
   private sanitizer = inject(DomSanitizer);
+  readonly ecosystem = inject(EcosystemConfigService);
 
-  categories: string[] = ['All', 'Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan'];
+  readonly categories = signal<string[]>(['All', 'Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan']);
   readonly selectedCategory = signal<string>('All');
   readonly videos = signal<SpiritualVideo[]>([]);
   readonly featuredVideo = signal<SpiritualVideo | null>(null);
   readonly safeEmbedUrl = signal<SafeResourceUrl>('');
 
   ngOnInit(): void {
+    this.panchangService.getSiteConfig().subscribe(cfg => {
+      if (cfg.videoCategories?.length) {
+        this.categories.set(['All', ...cfg.videoCategories]);
+      }
+    });
     this.loadVideos();
   }
 
@@ -398,7 +405,8 @@ export class VideoHubComponent implements OnInit {
   }
 
   shareVideo(video: SpiritualVideo): void {
-    const text = encodeURIComponent(`🕉️ ${video.title}\nवीडियो देखें: ${video.youTubeUrl}\nपंचांग एवं दैनिक वीडियो: https://panchang.keshavsingh.in`);
+    const base = typeof window !== 'undefined' ? window.location.origin : 'https://panchang.keshavsingh.in';
+    const text = encodeURIComponent(`🕉️ ${video.title}\nवीडियो देखें: ${video.youTubeUrl}\nपंचांग एवं दैनिक वीडियो: ${base}`);
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   }
 }

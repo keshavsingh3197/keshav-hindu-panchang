@@ -20,8 +20,8 @@ import { AuthService } from '../../../core/services/auth.service';
           <a routerLink="/videos" routerLinkActive="active-nav">🎥 दैनिक वीडियो हब (Videos)</a>
           <a routerLink="/itihaas" routerLinkActive="active-nav">📜 आज का इतिहास (History)</a>
           <a routerLink="/festivals" routerLinkActive="active-nav">🪔 व्रत एवं त्यौहार (Festivals)</a>
-          @if (auth.isEditorOrAdmin()) {
-            <a routerLink="/manage" routerLinkActive="active-nav" class="admin-link">⚙️ Manage Content</a>
+          @if (auth.isAdmin()) {
+            <a routerLink="/admin" routerLinkActive="active-nav" class="admin-link">🛡️ Admin</a>
           }
         </nav>
 

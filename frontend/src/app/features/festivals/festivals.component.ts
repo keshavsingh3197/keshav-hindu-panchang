@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PanchangService } from '../../core/services/panchang.service';
-import { FestivalItem } from '../../core/models/panchang.models';
+import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.models';
 
 @Component({
   selector: 'app-festivals',
@@ -53,26 +53,16 @@ import { FestivalItem } from '../../core/models/panchang.models';
         </div>
 
         <div class="samagri-grid">
-          <div class="item-card">
-            <span class="item-icon">🪔</span>
-            <h4>पीतल अखंड ज्योति दिया</h4>
-            <p>शुद्ध पीतल से निर्मित दीर्घकालिक पूजा दीप।</p>
-            <button class="btn-buy" (click)="openAffiliate('diya')">अमेज़न से प्राप्त करें →</button>
-          </div>
-
-          <div class="item-card">
-            <span class="item-icon">📿</span>
-            <h4>पंचमुखी रुद्राक्ष एवं तुलसी माला</h4>
-            <p>हरिद्वार एवं काशी से अभिमंत्रित 108 मनकों की माला।</p>
-            <button class="btn-buy" (click)="openAffiliate('mala')">अमेज़न से प्राप्त करें →</button>
-          </div>
-
-          <div class="item-card">
-            <span class="item-icon">📖</span>
-            <h4>श्रीमद्भगवद्गीता यथारूप (सटीक)</h4>
-            <p>संस्कृत श्लोक, हिंदी अन्वय एवं विशद व्याख्या सहित।</p>
-            <button class="btn-buy" (click)="openAffiliate('geeta')">अमेज़न से प्राप्त करें →</button>
-          </div>
+          @for (kit of kits(); track kit.id) {
+            <div class="item-card">
+              <span class="item-icon">{{ kit.icon || '🪔' }}</span>
+              <h4>{{ kit.title }}</h4>
+              <p>{{ kit.description }}</p>
+              <a [href]="kit.externalUrl" target="_blank" rel="noopener" class="btn-buy">
+                {{ kit.actionLabel || 'Explore →' }}
+              </a>
+            </div>
+          }
         </div>
       </section>
     </div>
@@ -176,6 +166,8 @@ import { FestivalItem } from '../../core/models/panchang.models';
       border-radius: 6px;
       font-weight: 600;
       font-size: 0.85rem;
+      text-decoration: none;
+      display: inline-block;
       cursor: pointer;
       transition: background 0.2s;
     }
@@ -186,12 +178,10 @@ export class FestivalsComponent implements OnInit {
   private panchangService = inject(PanchangService);
 
   readonly festivals = signal<FestivalItem[]>([]);
+  readonly kits = signal<DevotionalKitItem[]>([]);
 
   ngOnInit(): void {
     this.panchangService.getUpcomingFestivals().subscribe(f => this.festivals.set(f));
-  }
-
-  openAffiliate(item: string): void {
-    alert(`Affiliate referral link activated for ${item}. (Funneling user traffic to monetized partner page).`);
+    this.panchangService.getDevotionalKits().subscribe(k => this.kits.set(k));
   }
 }

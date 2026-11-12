@@ -1,9 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PanchangService } from '../../core/services/panchang.service';
-import { PanchangData } from '../../core/models/panchang.models';
+import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/panchang.models';
 
 @Component({
   selector: 'app-daily-panchang',
@@ -11,6 +11,13 @@ import { PanchangData } from '../../core/models/panchang.models';
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="panchang-page">
+      @if (adminDenied()) {
+        <div class="alert-denied">
+          <span>🛡️ <strong>Admin Access Required:</strong> Only users with the <code>Admin</code> role can access the Panchang Admin Console.</span>
+          <button type="button" (click)="adminDenied.set(false)" class="btn-close-alert">✕</button>
+        </div>
+      }
+
       <!-- Date & Location Bar -->
       <section class="control-strip">
         <div class="date-selector">
@@ -23,12 +30,9 @@ import { PanchangData } from '../../core/models/panchang.models';
         <div class="city-selector">
           <label>स्थान (City):</label>
           <select [ngModel]="selectedLocation()" (ngModelChange)="selectedLocation.set($event); loadPanchang()" class="city-select">
-            <option value="New Delhi, India">नई दिल्ली (New Delhi)</option>
-            <option value="Varanasi, India">वाराणसी / काशी (Varanasi)</option>
-            <option value="Ayodhya, India">अयोध्या (Ayodhya)</option>
-            <option value="Mumbai, India">मुंबई (Mumbai)</option>
-            <option value="Bengaluru, India">बेंगलुरु (Bengaluru)</option>
-            <option value="Ujjain, India">उज्जैन (Ujjain)</option>
+            @for (city of cities(); track city.id) {
+              <option [value]="city.name">{{ city.labelHindi || city.name }}</option>
+            }
           </select>
         </div>
       </section>
@@ -455,16 +459,30 @@ import { PanchangData } from '../../core/models/panchang.models';
       transition: background 0.2s;
     }
     .btn-video:hover { background: #fff7ed; }
+    .alert-denied { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem 1rem; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+    .btn-close-alert { background: transparent; border: none; color: #991b1b; font-weight: 700; cursor: pointer; font-size: 1rem; }
   `]
 })
 export class DailyPanchangComponent implements OnInit {
   private panchangService = inject(PanchangService);
+  private route = inject(ActivatedRoute);
 
-  readonly selectedDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly selectedDate = signal<string>(toLocalDateKey());
   readonly selectedLocation = signal<string>('New Delhi, India');
+  readonly cities = signal<PanchangCity[]>([]);
   readonly panchang = signal<PanchangData | null>(null);
+  readonly adminDenied = signal(false);
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      this.adminDenied.set(params.get('denied') === 'admin');
+    });
+    this.panchangService.getCities().subscribe(list => {
+      this.cities.set(list);
+      if (list.length > 0 && !list.some(c => c.name === this.selectedLocation())) {
+        this.selectedLocation.set(list[0].name);
+      }
+    });
     this.loadPanchang();
   }
 
@@ -474,14 +492,14 @@ export class DailyPanchangComponent implements OnInit {
   }
 
   changeDay(days: number): void {
-    const current = new Date(this.selectedDate());
-    current.setDate(current.getDate() + days);
-    this.selectedDate.set(current.toISOString().substring(0, 10));
+    const [y, m, d] = this.selectedDate().split('-').map(Number);
+    const current = new Date(y, m - 1, d + days);
+    this.selectedDate.set(toLocalDateKey(current));
     this.loadPanchang();
   }
 
   today(): void {
-    this.selectedDate.set(new Date().toISOString().substring(0, 10));
+    this.selectedDate.set(toLocalDateKey());
     this.loadPanchang();
   }
 }

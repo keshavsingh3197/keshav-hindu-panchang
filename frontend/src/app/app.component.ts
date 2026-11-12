@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { EcosystemBarComponent } from './features/shared/ecosystem-bar/ecosystem-bar.component';
 import { HeaderComponent } from './features/shared/header/header.component';
 import { AuthService } from './core/services/auth.service';
+import { EcosystemConfigService } from './core/services/ecosystem-config.service';
 
 @Component({
   selector: 'app-root',
@@ -17,18 +18,17 @@ import { AuthService } from './core/services/auth.service';
     <footer class="app-footer">
       <div class="footer-container">
         <div class="footer-col">
-          <strong>🕉️ पंचांगम् & संस्कृति — Keshav Singh Network</strong>
+          <strong>🕉️ पंचांगम् & संस्कृति — {{ creatorName() }} Network</strong>
           <p>दैनिक वैदिक पंचांग, शुभ मुहूर्त, आज का इतिहास एवं सनातन ज्ञान प्रसार।</p>
         </div>
         <div class="footer-links">
-          <a href="https://studio.keshavsingh.in" target="_blank" rel="noopener">AnimStudio AI</a>
-          <a href="https://social.keshavsingh.in" target="_blank" rel="noopener">Social Analytics</a>
-          <a href="https://admin.keshavsingh.in" target="_blank" rel="noopener">Central SSO</a>
-          <a href="https://git.keshavsingh.in" target="_blank" rel="noopener">Content Blog</a>
+          @for (site of footerSites(); track site.key) {
+            <a [href]="site.url" target="_blank" rel="noopener">{{ site.name }}</a>
+          }
         </div>
       </div>
       <div class="footer-bottom">
-        © 2026 Keshav Singh. Part of the keshavsingh.in ecosystem. All rights reserved.
+        {{ copyrightNotice() }}
       </div>
     </footer>
   `,
@@ -94,15 +94,14 @@ import { AuthService } from './core/services/auth.service';
 })
 export class AppComponent implements OnInit {
   private auth = inject(AuthService);
+  private ecosystem = inject(EcosystemConfigService);
+
+  readonly footerSites = this.ecosystem.footerSites;
+  readonly copyrightNotice = this.ecosystem.copyrightNotice;
+  readonly creatorName = this.ecosystem.creatorName;
 
   ngOnInit(): void {
-    this.auth.refresh().subscribe({
-      next: (session) => {
-        console.log('SSO session active for:', session.user.email);
-      },
-      error: () => {
-        console.log('Operating in public visitor mode.');
-      }
-    });
+    this.ecosystem.load();
+    this.auth.ensureInitialized().subscribe();
   }
 }

@@ -4,120 +4,125 @@ namespace HinduPanchang.Api.Services;
 
 public class CulturalContentService
 {
-    private static readonly List<HistoricalIncident> MockIncidents = new()
-    {
-        new HistoricalIncident
-        {
-            Id = "inc-1",
-            DateKey = "11-12",
-            Year = 1930,
-            Title = "First Round Table Conference Inaugurated",
-            Category = "Indian History",
-            Description = "The first of three Round Table Conferences convened in London to discuss constitutional reforms in India.",
-            CulturalSignificance = "Marked an epochal milestone in India's struggle for self-governance and constitutional sovereignty."
-        },
-        new HistoricalIncident
-        {
-            Id = "inc-2",
-            DateKey = "11-12",
-            Year = 1896,
-            Title = "Birth of Dr. Salim Ali (Birdman of India)",
-            Category = "Science & Ecology",
-            Description = "Birth anniversary of natural historian Dr. Salim Ali, who conducted systematic bird surveys across India and pioneered wildlife conservation.",
-            CulturalSignificance = "Revered across India as a symbol of compassionate stewardship of nature and living beings."
-        },
-        new HistoricalIncident
-        {
-            Id = "inc-3",
-            DateKey = "11-12",
-            Year = 1469,
-            Title = "Sacred Prakash Parv & Guru Nanak Dev Ji Teachings",
-            Category = "Spiritual Saint",
-            Description = "Observance of the universal message of 'Ik Onkar' (One Divine Creator), equality, and selfless service (Sewa).",
-            CulturalSignificance = "Deep spiritual reverence uniting devotees across India in langar and naam-simran."
-        },
-        new HistoricalIncident
-        {
-            Id = "inc-4",
-            DateKey = "11-13",
-            Year = 1780,
-            Title = "Maharaja Ranjit Singh Birth Anniversary",
-            Category = "Indian History",
-            Description = "Birth of the legendary Maharaja Ranjit Singh, founder of the Sikh Empire known as the 'Sher-e-Punjab' (Lion of Punjab).",
-            CulturalSignificance = "Protected sacred temples, donated gold for the Golden Temple in Amritsar, and fostered communal harmony."
-        }
-    };
+    private const string IncidentsCollection = "historical_incidents";
+    private const string KathasCollection = "daily_kathas";
+    private const string FestivalsCollection = "festivals";
+    private const string KitsCollection = "devotional_kits";
+    private const string SiteConfigCollection = "site_config";
 
-    private static readonly List<FestivalItem> UpcomingFestivals = new()
-    {
-        new FestivalItem
-        {
-            Id = "f-1",
-            NameHindi = "देवउठनी एकादशी (प्रबोधिनी एकादशी)",
-            NameEnglish = "Devutthana Ekadashi",
-            Date = DateTime.UtcNow.AddDays(2),
-            Tithi = "Shukla Paksha Ekadashi",
-            MonthVedic = "Kartika",
-            Description = "Marks the awakening of Lord Vishnu after four months of divine slumber (Chaturmas). Auspicious ceremonies (Vivah Muhurats) commence.",
-            RitualsAndPujaVidhi = "Devotees observe strict fasting, perform Tulsi Vivah with Shaligram, and light sugarcane mandaps with diyas.",
-            FastingRules = "Falahar fast, grains and legumes abstained.",
-            IsMajorFestival = true
-        },
-        new FestivalItem
-        {
-            Id = "f-2",
-            NameHindi = "तुलसी विवाह",
-            NameEnglish = "Tulsi Vivah",
-            Date = DateTime.UtcNow.AddDays(3),
-            Tithi = "Shukla Paksha Dwadashi",
-            MonthVedic = "Kartika",
-            Description = "Ceremonial marriage of the sacred Tulsi plant (incarnation of Vrinda) with Lord Shaligram (Vishnu).",
-            RitualsAndPujaVidhi = "Decorating Tulsi pot with turmeric, vermillion, saree, and singing Vedic mangalashtak hymns.",
-            FastingRules = "Optional fast till twilight puja.",
-            IsMajorFestival = true
-        },
-        new FestivalItem
-        {
-            Id = "f-3",
-            NameHindi = "कार्तिक पूर्णिमा (देव दीपावली)",
-            NameEnglish = "Kartik Purnima & Dev Deepawali",
-            Date = DateTime.UtcNow.AddDays(5),
-            Tithi = "Purnima",
-            MonthVedic = "Kartika",
-            Description = "Celebration of Lord Shiva's victory over the demon Tripurasura. The ghats of Varanasi are illuminated with millions of earthen lamps.",
-            RitualsAndPujaVidhi = "Holy dip (Snan) in sacred rivers at sunrise and lighting lamps at temples and water bodies.",
-            FastingRules = "Full day fast until Chandra darshan.",
-            IsMajorFestival = true
-        }
-    };
+    private readonly HybridDataStore _store;
 
-    public Task<List<HistoricalIncident>> GetIncidentsForDateAsync(DateTime date)
+    public CulturalContentService(HybridDataStore store)
     {
+        _store = store;
+    }
+
+    public string StorageMode => _store.StorageMode;
+
+    // ---- Historical Incidents ----
+
+    public async Task<List<HistoricalIncident>> GetIncidentsForDateAsync(DateTime date)
+    {
+        var all = await GetAllIncidentsAsync();
         string key = date.ToString("MM-dd");
-        var matches = MockIncidents.Where(i => i.DateKey == key).ToList();
-        if (!matches.Any())
-        {
-            matches = MockIncidents.Take(3).ToList();
-        }
-        return Task.FromResult(matches);
+        var matches = all.Where(i => i.DateKey == key).OrderByDescending(i => i.Year).ToList();
+        if (matches.Count > 0) return matches;
+
+        // If no exact MM-dd entry exists yet, rotate deterministically by date instead of identical top 3
+        if (all.Count == 0) return [];
+        int offset = Math.Abs(date.DayOfYear) % all.Count;
+        return all.Skip(offset).Concat(all.Take(offset)).Take(Math.Min(3, all.Count)).ToList();
     }
 
-    public Task<DailyKatha> GetDailyKathaAsync(DateTime date)
+    public async Task<List<HistoricalIncident>> GetAllIncidentsAsync()
     {
-        var katha = new DailyKatha
-        {
-            Id = "katha-" + date.ToString("yyyyMMdd"),
-            Title = "The Power of Truth & Perseverance: Raja Harishchandra",
-            DeityOrSage = "Maharishi Vishwamitra & Raja Harishchandra",
-            StorySummary = "King Harishchandra gave away his entire kingdom, wealth, and worldly possessions to fulfill a promise and honor the sanctity of truth (Satya). Despite severe personal loss and testing by sage Vishwamitra, he never wavered from dharma.",
-            MoralTeaching = "Truth (Satya) and Integrity are the ultimate foundation of righteous life. Material riches fade, but the honor of dharma endures through eternity.",
-            SanskritMantra = "सत्यमेव जयते नानृतम् (Truth alone triumphs, not untruth)."
-        };
-        return Task.FromResult(katha);
+        var list = await _store.GetListAsync(IncidentsCollection, PanchangSeedData.DefaultIncidents);
+        return list.OrderBy(i => i.DateKey).ThenByDescending(i => i.Year).ToList();
     }
 
-    public Task<List<FestivalItem>> GetUpcomingFestivalsAsync()
+    public async Task<HistoricalIncident> UpsertIncidentAsync(HistoricalIncident incident)
     {
-        return Task.FromResult(UpcomingFestivals);
+        if (string.IsNullOrWhiteSpace(incident.Id))
+            incident.Id = $"inc-{Guid.NewGuid():N}"[..10];
+        return await _store.UpsertItemAsync(IncidentsCollection, incident.Id, x => x.Id, incident, PanchangSeedData.DefaultIncidents);
+    }
+
+    public Task<bool> DeleteIncidentAsync(string id) =>
+        _store.DeleteItemAsync(IncidentsCollection, id, x => x.Id, PanchangSeedData.DefaultIncidents);
+
+    // ---- Daily Kathas ----
+
+    public Task<List<DailyKatha>> GetAllKathasAsync() =>
+        _store.GetListAsync(KathasCollection, PanchangSeedData.DefaultKathas);
+
+    public async Task<DailyKatha> GetDailyKathaAsync(DateTime date)
+    {
+        var kathas = await GetAllKathasAsync();
+        if (kathas.Count == 0)
+            return PanchangSeedData.DefaultKathas()[0];
+
+        int idx = Math.Abs(date.DayOfYear + date.Year) % kathas.Count;
+        return kathas[idx];
+    }
+
+    public async Task<DailyKatha> UpsertKathaAsync(DailyKatha katha)
+    {
+        if (string.IsNullOrWhiteSpace(katha.Id))
+            katha.Id = $"katha-{Guid.NewGuid():N}"[..10];
+        return await _store.UpsertItemAsync(KathasCollection, katha.Id, x => x.Id, katha, PanchangSeedData.DefaultKathas);
+    }
+
+    public Task<bool> DeleteKathaAsync(string id) =>
+        _store.DeleteItemAsync(KathasCollection, id, x => x.Id, PanchangSeedData.DefaultKathas);
+
+    // ---- Festivals ----
+
+    public async Task<List<FestivalItem>> GetUpcomingFestivalsAsync()
+    {
+        var list = await _store.GetListAsync(FestivalsCollection, PanchangSeedData.DefaultFestivals);
+        return list.OrderBy(f => f.Date).ToList();
+    }
+
+    public async Task<FestivalItem> UpsertFestivalAsync(FestivalItem festival)
+    {
+        if (string.IsNullOrWhiteSpace(festival.Id))
+            festival.Id = $"f-{Guid.NewGuid():N}"[..10];
+        return await _store.UpsertItemAsync(FestivalsCollection, festival.Id, x => x.Id, festival, PanchangSeedData.DefaultFestivals);
+    }
+
+    public Task<bool> DeleteFestivalAsync(string id) =>
+        _store.DeleteItemAsync(FestivalsCollection, id, x => x.Id, PanchangSeedData.DefaultFestivals);
+
+    // ---- Devotional Kits ----
+
+    public async Task<List<DevotionalKitItem>> GetDevotionalKitsAsync(bool includeInactive = false)
+    {
+        var list = await _store.GetListAsync(KitsCollection, PanchangSeedData.DefaultDevotionalKits);
+        return (includeInactive ? list : list.Where(k => k.IsActive))
+            .OrderBy(k => k.SortOrder)
+            .ToList();
+    }
+
+    public async Task<DevotionalKitItem> UpsertDevotionalKitAsync(DevotionalKitItem kit)
+    {
+        if (string.IsNullOrWhiteSpace(kit.Id))
+            kit.Id = $"kit-{Guid.NewGuid():N}"[..10];
+        return await _store.UpsertItemAsync(KitsCollection, kit.Id, x => x.Id, kit, PanchangSeedData.DefaultDevotionalKits);
+    }
+
+    public Task<bool> DeleteDevotionalKitAsync(string id) =>
+        _store.DeleteItemAsync(KitsCollection, id, x => x.Id, PanchangSeedData.DefaultDevotionalKits);
+
+    // ---- Site Config ----
+
+    public Task<PanchangSiteConfig> GetSiteConfigAsync() =>
+        _store.GetSingletonAsync(SiteConfigCollection, "default", PanchangSeedData.DefaultSiteConfig);
+
+    public Task<PanchangSiteConfig> SaveSiteConfigAsync(PanchangSiteConfig config)
+    {
+        config.Id = "default";
+        config.UpdatedAt = DateTime.UtcNow;
+        config.VideoCategories ??= [];
+        return _store.SaveSingletonAsync(SiteConfigCollection, "default", config);
     }
 }

@@ -21,4 +21,10 @@ services:
         value: keshavsingh-apps
       - key: Jwt__SigningKey
         sync: false
+      - key: Mongo__ConnectionString
+        sync: false
+      - key: Mongo__Database
+        value: HinduPanchangDb
+      - key: Ecosystem__AdminConfigUrl
+        value: https://id.keshavsingh.in/api/config
     healthCheckPath: /health

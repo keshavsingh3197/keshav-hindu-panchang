@@ -21,4 +21,11 @@ public class FestivalsController : ControllerBase
         var festivals = await _contentService.GetUpcomingFestivalsAsync();
         return Ok(festivals);
     }
+
+    [HttpGet("kits")]
+    public async Task<ActionResult<List<DevotionalKitItem>>> GetDevotionalKits()
+    {
+        var kits = await _contentService.GetDevotionalKitsAsync();
+        return Ok(kits);
+    }
 }
