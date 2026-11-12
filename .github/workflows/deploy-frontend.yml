@@ -43,8 +43,15 @@ jobs:
       - name: Build production bundle
         run: npm run build -- --configuration production --base-href /
 
-      - name: Add SPA 404 fallback
-        run: cp dist/hindu-panchang/browser/index.html dist/hindu-panchang/browser/404.html || cp dist/frontend/browser/index.html dist/frontend/browser/404.html
+      - name: Add SPA 404 fallback and static route entrypoints
+        run: |
+          OUT=dist/hindu-panchang/browser
+          [ -d "$OUT" ] || OUT=dist/frontend/browser
+          cp "$OUT/index.html" "$OUT/404.html"
+          for route in panchang videos itihaas festivals manage; do
+            mkdir -p "$OUT/$route"
+            cp "$OUT/index.html" "$OUT/$route/index.html"
+          done
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PanchangService } from '../../core/services/panchang.service';
@@ -22,25 +22,25 @@ import { HistoricalIncident, DailyKatha } from '../../core/models/panchang.model
       <!-- Date Navigator -->
       <div class="date-strip">
         <label>तिथि का इतिहास देखें (Select Date):</label>
-        <input type="date" [(ngModel)]="currentDate" (change)="loadData()" class="f-date" />
+        <input type="date" [ngModel]="currentDate()" (ngModelChange)="currentDate.set($event); loadData()" class="f-date" />
       </div>
 
       <!-- Daily Dharmik Katha Highlight -->
-      @if (dailyKatha) {
+      @if (dailyKatha(); as katha) {
         <section class="katha-hero-card">
           <div class="katha-badge">✨ आज की प्रेरक पौराणिक कथा (Story of the Day)</div>
-          <h2>{{ dailyKatha.title }}</h2>
-          <span class="katha-characters">पात्र / ऋषि: {{ dailyKatha.deityOrSage }}</span>
+          <h2>{{ katha.title }}</h2>
+          <span class="katha-characters">पात्र / ऋषि: {{ katha.deityOrSage }}</span>
 
-          <p class="katha-body">{{ dailyKatha.storySummary }}</p>
+          <p class="katha-body">{{ katha.storySummary }}</p>
 
           <div class="moral-box">
             <strong>सार एवं शिक्षा (Moral):</strong>
-            <span>{{ dailyKatha.moralTeaching }}</span>
+            <span>{{ katha.moralTeaching }}</span>
           </div>
 
           <div class="mantra-line">
-            {{ dailyKatha.sanskritMantra }}
+            {{ katha.sanskritMantra }}
           </div>
         </section>
       }
@@ -50,7 +50,7 @@ import { HistoricalIncident, DailyKatha } from '../../core/models/panchang.model
         <h2>🇮🇳 आज के दिन के ऐतिहासिक प्रसंग एवं घटनाएं (Historical Incidents)</h2>
 
         <div class="timeline-list">
-          @for (inc of incidents; track inc.id) {
+          @for (inc of incidents(); track inc.id) {
             <div class="timeline-item">
               <div class="year-marker">{{ inc.year }}</div>
               <div class="incident-card">
@@ -243,16 +243,16 @@ import { HistoricalIncident, DailyKatha } from '../../core/models/panchang.model
 export class AajKaItihaasComponent implements OnInit {
   private panchangService = inject(PanchangService);
 
-  currentDate: string = new Date().toISOString().substring(0, 10);
-  incidents: HistoricalIncident[] = [];
-  dailyKatha: DailyKatha | null = null;
+  readonly currentDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly incidents = signal<HistoricalIncident[]>([]);
+  readonly dailyKatha = signal<DailyKatha | null>(null);
 
   ngOnInit(): void {
     this.loadData();
   }
 
   loadData(): void {
-    this.panchangService.getAajKaItihaas(this.currentDate).subscribe(inc => this.incidents = inc);
-    this.panchangService.getDailyKatha(this.currentDate).subscribe(k => this.dailyKatha = k);
+    this.panchangService.getAajKaItihaas(this.currentDate()).subscribe(inc => this.incidents.set(inc));
+    this.panchangService.getDailyKatha(this.currentDate()).subscribe(k => this.dailyKatha.set(k));
   }
 }

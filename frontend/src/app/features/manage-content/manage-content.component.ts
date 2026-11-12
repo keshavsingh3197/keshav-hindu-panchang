@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
@@ -93,7 +93,7 @@ import { SpiritualVideo } from '../../core/models/video.models';
             <button type="submit" class="btn-publish">🚀 वीडियो लाइव प्रकाशित करें (Publish Video)</button>
           </form>
 
-          @if (publishSuccess) {
+          @if (publishSuccess()) {
             <div class="success-banner">
               ✅ वीडियो सफलतापूर्वक प्रकाशित हो गया है! अब यह दैनिक वीडियो हब में प्रदर्शित हो रहा है।
             </div>
@@ -222,7 +222,7 @@ export class ManageContentComponent implements OnInit {
   auth = inject(AuthService);
   private panchangService = inject(PanchangService);
 
-  publishSuccess = false;
+  readonly publishSuccess = signal(false);
   newVideo: SpiritualVideo = {
     id: '',
     title: '',
@@ -267,8 +267,8 @@ export class ManageContentComponent implements OnInit {
     }
 
     this.panchangService.saveVideo(this.newVideo).subscribe(() => {
-      this.publishSuccess = true;
-      setTimeout(() => this.publishSuccess = false, 5000);
+      this.publishSuccess.set(true);
+      setTimeout(() => this.publishSuccess.set(false), 5000);
       this.newVideo = {
         id: '',
         title: '',

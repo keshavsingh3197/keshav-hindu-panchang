@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PanchangService } from '../../core/services/panchang.service';
@@ -20,11 +20,11 @@ import { SpiritualVideo } from '../../core/models/video.models';
       </div>
 
       <!-- Featured Main Video Player -->
-      @if (featuredVideo) {
+      @if (featuredVideo(); as featured) {
         <section class="featured-video-player">
           <div class="player-wrapper">
             <iframe 
-              [src]="safeEmbedUrl" 
+              [src]="safeEmbedUrl()" 
               title="Featured Video"
               frameborder="0" 
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -34,17 +34,17 @@ import { SpiritualVideo } from '../../core/models/video.models';
 
           <div class="featured-meta">
             <div class="meta-top">
-              <span class="category-badge">{{ featuredVideo.category }}</span>
-              <span class="view-count">👁️ {{ featuredVideo.viewCount | number }} Views</span>
+              <span class="category-badge">{{ featured.category }}</span>
+              <span class="view-count">👁️ {{ featured.viewCount | number }} Views</span>
             </div>
-            <h2>{{ featuredVideo.title }}</h2>
-            <p class="featured-desc">{{ featuredVideo.description }}</p>
+            <h2>{{ featured.title }}</h2>
+            <p class="featured-desc">{{ featured.description }}</p>
 
             <div class="cta-actions-row">
-              <a [href]="featuredVideo.channelUrl" target="_blank" rel="noopener" class="btn-yt-sub">
+              <a [href]="featured.channelUrl" target="_blank" rel="noopener" class="btn-yt-sub">
                 ▶️ यूट्यूब पर सब्सक्राइब करें (Subscribe Channel)
               </a>
-              <button (click)="shareVideo(featuredVideo)" class="btn-share">
+              <button (click)="shareVideo(featured)" class="btn-share">
                 📲 शेयर करें (WhatsApp / Share)
               </button>
             </div>
@@ -57,7 +57,7 @@ import { SpiritualVideo } from '../../core/models/video.models';
         @for (cat of categories; track cat) {
           <button 
             type="button"
-            [class.active]="selectedCategory === cat" 
+            [class.active]="selectedCategory() === cat" 
             (click)="selectCategory(cat)"
             class="cat-tab">
             {{ cat }}
@@ -67,7 +67,7 @@ import { SpiritualVideo } from '../../core/models/video.models';
 
       <!-- Video Grid -->
       <section class="videos-grid">
-        @for (vid of videos; track vid.id) {
+        @for (vid of videos(); track vid.id) {
           <div class="video-card" (click)="setFeatured(vid)">
             <div class="thumb-container">
               <img [src]="vid.thumbnailUrl" [alt]="vid.title" class="video-thumb" />
@@ -367,33 +367,33 @@ export class VideoHubComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
 
   categories: string[] = ['All', 'Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan'];
-  selectedCategory: string = 'All';
-  videos: SpiritualVideo[] = [];
-  featuredVideo: SpiritualVideo | null = null;
-  safeEmbedUrl: SafeResourceUrl = '';
+  readonly selectedCategory = signal<string>('All');
+  readonly videos = signal<SpiritualVideo[]>([]);
+  readonly featuredVideo = signal<SpiritualVideo | null>(null);
+  readonly safeEmbedUrl = signal<SafeResourceUrl>('');
 
   ngOnInit(): void {
     this.loadVideos();
   }
 
   loadVideos(): void {
-    this.panchangService.getVideos(this.selectedCategory).subscribe(vids => {
-      this.videos = vids;
-      if (!this.featuredVideo && vids.length > 0) {
+    this.panchangService.getVideos(this.selectedCategory()).subscribe(vids => {
+      this.videos.set(vids);
+      if (!this.featuredVideo() && vids.length > 0) {
         this.setFeatured(vids[0]);
       }
     });
   }
 
   selectCategory(cat: string): void {
-    this.selectedCategory = cat;
+    this.selectedCategory.set(cat);
     this.loadVideos();
   }
 
   setFeatured(video: SpiritualVideo): void {
-    this.featuredVideo = video;
+    this.featuredVideo.set(video);
     const url = video.embedUrl || `https://www.youtube.com/embed/${video.youTubeVideoId}`;
-    this.safeEmbedUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    this.safeEmbedUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

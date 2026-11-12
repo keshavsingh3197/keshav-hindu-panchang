@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -15,14 +15,14 @@ import { PanchangData } from '../../core/models/panchang.models';
       <section class="control-strip">
         <div class="date-selector">
           <button (click)="changeDay(-1)" class="btn-nav">‹ पिछला दिन (Previous)</button>
-          <input type="date" [(ngModel)]="selectedDate" (change)="loadPanchang()" class="date-picker" />
+          <input type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event); loadPanchang()" class="date-picker" />
           <button (click)="today()" class="btn-today">आज (Today)</button>
           <button (click)="changeDay(1)" class="btn-nav">अगला दिन (Next) ›</button>
         </div>
 
         <div class="city-selector">
           <label>स्थान (City):</label>
-          <select [(ngModel)]="selectedLocation" (change)="loadPanchang()" class="city-select">
+          <select [ngModel]="selectedLocation()" (ngModelChange)="selectedLocation.set($event); loadPanchang()" class="city-select">
             <option value="New Delhi, India">नई दिल्ली (New Delhi)</option>
             <option value="Varanasi, India">वाराणसी / काशी (Varanasi)</option>
             <option value="Ayodhya, India">अयोध्या (Ayodhya)</option>
@@ -33,29 +33,29 @@ import { PanchangData } from '../../core/models/panchang.models';
         </div>
       </section>
 
-      @if (panchang) {
+      @if (panchang(); as p) {
         <!-- Hero Header Card -->
         <section class="panchang-hero">
           <div class="hero-top">
             <div class="hero-title-box">
-              <span class="vedic-date-pill">{{ panchang.paksha }} • {{ panchang.monthPurnimanta }} मास</span>
-              <h1>{{ panchang.formattedDate }}</h1>
+              <span class="vedic-date-pill">{{ p.paksha }} • {{ p.monthPurnimanta }} मास</span>
+              <h1>{{ p.formattedDate }}</h1>
               <p class="samvat-text">
-                विक्रम संवत: <strong>{{ panchang.vikramSamvat }}</strong> | 
-                शक संवत: <strong>{{ panchang.shakaSamvat }}</strong> | 
-                स्थान: <strong>{{ panchang.location }}</strong>
+                विक्रम संवत: <strong>{{ p.vikramSamvat }}</strong> | 
+                शक संवत: <strong>{{ p.shakaSamvat }}</strong> | 
+                स्थान: <strong>{{ p.location }}</strong>
               </p>
             </div>
             <div class="quick-muhurat-badge">
               <div class="q-label">अभिजीत मुहूर्त (शुभ)</div>
-              <div class="q-val">{{ panchang.abhijitMuhurat }}</div>
+              <div class="q-val">{{ p.abhijitMuhurat }}</div>
             </div>
           </div>
 
           <!-- Daily Sanskrit Sutra -->
           <div class="sutra-banner">
-            <div class="sutra-text">🕉️ {{ panchang.dailySanskritSutra }}</div>
-            <div class="sutra-meaning">अर्थ: {{ panchang.dailySutraMeaning }}</div>
+            <div class="sutra-text">🕉️ {{ p.dailySanskritSutra }}</div>
+            <div class="sutra-meaning">अर्थ: {{ p.dailySutraMeaning }}</div>
           </div>
         </section>
 
@@ -69,32 +69,32 @@ import { PanchangData } from '../../core/models/panchang.models';
           <div class="grid grid-5">
             <div class="limb-card">
               <div class="limb-label">तिथि (Tithi)</div>
-              <div class="limb-val">{{ panchang.tithi }}</div>
-              <div class="limb-sub">{{ panchang.tithiEndTime }}</div>
+              <div class="limb-val">{{ p.tithi }}</div>
+              <div class="limb-sub">{{ p.tithiEndTime }}</div>
             </div>
 
             <div class="limb-card">
               <div class="limb-label">नक्षत्र (Nakshatra)</div>
-              <div class="limb-val">{{ panchang.nakshatra }}</div>
-              <div class="limb-sub">{{ panchang.nakshatraEndTime }}</div>
+              <div class="limb-val">{{ p.nakshatra }}</div>
+              <div class="limb-sub">{{ p.nakshatraEndTime }}</div>
             </div>
 
             <div class="limb-card">
               <div class="limb-label">योग (Yoga)</div>
-              <div class="limb-val">{{ panchang.yoga }}</div>
-              <div class="limb-sub">{{ panchang.yogaEndTime }}</div>
+              <div class="limb-val">{{ p.yoga }}</div>
+              <div class="limb-sub">{{ p.yogaEndTime }}</div>
             </div>
 
             <div class="limb-card">
               <div class="limb-label">करण (Karana)</div>
-              <div class="limb-val">{{ panchang.karana }}</div>
-              <div class="limb-sub">{{ panchang.karanaEndTime }}</div>
+              <div class="limb-val">{{ p.karana }}</div>
+              <div class="limb-sub">{{ p.karanaEndTime }}</div>
             </div>
 
             <div class="limb-card">
               <div class="limb-label">वार (Vaara)</div>
-              <div class="limb-val">{{ panchang.vaara }}</div>
-              <div class="limb-sub">{{ panchang.dayOfWeek }}</div>
+              <div class="limb-val">{{ p.vaara }}</div>
+              <div class="limb-sub">{{ p.dayOfWeek }}</div>
             </div>
           </div>
         </section>
@@ -107,27 +107,27 @@ import { PanchangData } from '../../core/models/panchang.models';
             <div class="two-col-list">
               <div class="time-row">
                 <span class="t-name">सूर्योदय (Sunrise)</span>
-                <span class="t-time">{{ panchang.sunrise }}</span>
+                <span class="t-time">{{ p.sunrise }}</span>
               </div>
               <div class="time-row">
                 <span class="t-name">सूर्यास्त (Sunset)</span>
-                <span class="t-time">{{ panchang.sunset }}</span>
+                <span class="t-time">{{ p.sunset }}</span>
               </div>
               <div class="time-row">
                 <span class="t-name">चन्द्रोदय (Moonrise)</span>
-                <span class="t-time">{{ panchang.moonrise }}</span>
+                <span class="t-time">{{ p.moonrise }}</span>
               </div>
               <div class="time-row">
                 <span class="t-name">चन्द्रास्त (Moonset)</span>
-                <span class="t-time">{{ panchang.moonset }}</span>
+                <span class="t-time">{{ p.moonset }}</span>
               </div>
               <div class="time-row">
                 <span class="t-name">सूर्य राशि (Sun Sign)</span>
-                <span class="t-time">{{ panchang.sunSign }}</span>
+                <span class="t-time">{{ p.sunSign }}</span>
               </div>
               <div class="time-row">
                 <span class="t-name">चन्द्र राशि (Moon Sign)</span>
-                <span class="t-time">{{ panchang.moonSign }}</span>
+                <span class="t-time">{{ p.moonSign }}</span>
               </div>
             </div>
           </div>
@@ -138,27 +138,27 @@ import { PanchangData } from '../../core/models/panchang.models';
             <div class="two-col-list">
               <div class="time-row auspicious">
                 <span class="t-name">ब्रह्म मुहूर्त (Brahma Muhurat)</span>
-                <span class="t-time">{{ panchang.brahmaMuhurat }}</span>
+                <span class="t-time">{{ p.brahmaMuhurat }}</span>
               </div>
               <div class="time-row auspicious">
                 <span class="t-name">अभिजीत मुहूर्त (Abhijit Muhurat)</span>
-                <span class="t-time">{{ panchang.abhijitMuhurat }}</span>
+                <span class="t-time">{{ p.abhijitMuhurat }}</span>
               </div>
               <div class="time-row auspicious">
                 <span class="t-name">अमृत काल (Amrit Kaal)</span>
-                <span class="t-time">{{ panchang.amritKaal }}</span>
+                <span class="t-time">{{ p.amritKaal }}</span>
               </div>
               <div class="time-row inauspicious">
                 <span class="t-name">राहुकाल (Rahu Kaal - अशुभ)</span>
-                <span class="t-time alert-tag">{{ panchang.rahuKaal }}</span>
+                <span class="t-time alert-tag">{{ p.rahuKaal }}</span>
               </div>
               <div class="time-row inauspicious">
                 <span class="t-name">यमगण्ड (Yamaganda)</span>
-                <span class="t-time">{{ panchang.yamaganda }}</span>
+                <span class="t-time">{{ p.yamaganda }}</span>
               </div>
               <div class="time-row inauspicious">
                 <span class="t-name">गुलिक काल (Gulika Kaal)</span>
-                <span class="t-time">{{ panchang.gulikaKaal }}</span>
+                <span class="t-time">{{ p.gulikaKaal }}</span>
               </div>
             </div>
           </div>
@@ -172,7 +172,7 @@ import { PanchangData } from '../../core/models/panchang.models';
           </div>
 
           <div class="choghadiya-row">
-            @for (chog of panchang.dayChoghadiya; track chog.timeRange) {
+            @for (chog of p.dayChoghadiya; track chog.timeRange) {
               <div class="chog-card" [class.shubh-bg]="chog.type === 'Shubh'" [class.ashubh-bg]="chog.type === 'Ashubh'">
                 <span class="chog-name">{{ chog.name }}</span>
                 <span class="chog-time">{{ chog.timeRange }}</span>
@@ -460,28 +460,28 @@ import { PanchangData } from '../../core/models/panchang.models';
 export class DailyPanchangComponent implements OnInit {
   private panchangService = inject(PanchangService);
 
-  selectedDate: string = new Date().toISOString().substring(0, 10);
-  selectedLocation: string = 'New Delhi, India';
-  panchang: PanchangData | null = null;
+  readonly selectedDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly selectedLocation = signal<string>('New Delhi, India');
+  readonly panchang = signal<PanchangData | null>(null);
 
   ngOnInit(): void {
     this.loadPanchang();
   }
 
   loadPanchang(): void {
-    this.panchangService.getDailyPanchang(this.selectedDate, this.selectedLocation)
-      .subscribe(data => this.panchang = data);
+    this.panchangService.getDailyPanchang(this.selectedDate(), this.selectedLocation())
+      .subscribe(data => this.panchang.set(data));
   }
 
   changeDay(days: number): void {
-    const current = new Date(this.selectedDate);
+    const current = new Date(this.selectedDate());
     current.setDate(current.getDate() + days);
-    this.selectedDate = current.toISOString().substring(0, 10);
+    this.selectedDate.set(current.toISOString().substring(0, 10));
     this.loadPanchang();
   }
 
   today(): void {
-    this.selectedDate = new Date().toISOString().substring(0, 10);
+    this.selectedDate.set(new Date().toISOString().substring(0, 10));
     this.loadPanchang();
   }
 }
