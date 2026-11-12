@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: hindu-panchang-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: AllowedOrigins__0
+        value: https://panchang.keshavsingh.in
+      - key: AllowedOrigins__1
+        value: https://admin.keshavsingh.in
+      - key: AllowedOrigins__2
+        value: https://studio.keshavsingh.in
+      - key: AllowedOrigins__3
+        value: https://social.keshavsingh.in
+      - key: Jwt__Issuer
+        value: keshavsingh-idp
+      - key: Jwt__Audience
+        value: keshavsingh-apps
+      - key: Jwt__SigningKey
+        sync: false
+    healthCheckPath: /health
