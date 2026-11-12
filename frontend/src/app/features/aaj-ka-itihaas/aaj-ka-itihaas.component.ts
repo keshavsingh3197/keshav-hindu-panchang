@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PanchangService } from '../../core/services/panchang.service';
-import { HistoricalIncident, DailyKatha } from '../../core/models/panchang.models';
+import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/models/panchang.models';
 
 @Component({
   selector: 'app-aaj-ka-itihaas',
@@ -243,7 +243,7 @@ import { HistoricalIncident, DailyKatha } from '../../core/models/panchang.model
 export class AajKaItihaasComponent implements OnInit {
   private panchangService = inject(PanchangService);
 
-  readonly currentDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly currentDate = signal<string>(toLocalDateKey());
   readonly incidents = signal<HistoricalIncident[]>([]);
   readonly dailyKatha = signal<DailyKatha | null>(null);
 

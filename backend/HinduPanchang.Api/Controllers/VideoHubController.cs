@@ -32,16 +32,8 @@ public class VideoHubController : ControllerBase
     }
 
     [HttpPost("manage")]
-    [Authorize(Roles = "Admin,Editor")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<SpiritualVideo>> AddOrUpdateVideo([FromBody] SpiritualVideo video)
-    {
-        var result = await _videoService.AddOrUpdateVideoAsync(video);
-        return Ok(result);
-    }
-
-    // Public demo fallback endpoint for frontend client updates when running without central IdP in dev
-    [HttpPost("demo-add")]
-    public async Task<ActionResult<SpiritualVideo>> DemoAddVideo([FromBody] SpiritualVideo video)
     {
         var result = await _videoService.AddOrUpdateVideoAsync(video);
         return Ok(result);

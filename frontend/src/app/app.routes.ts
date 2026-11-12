@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -23,8 +24,15 @@ export const routes: Routes = [
     loadComponent: () => import('./features/festivals/festivals.component').then(m => m.FestivalsComponent)
   },
   {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/panchang-admin.component').then(m => m.PanchangAdminComponent)
+  },
+  {
     path: 'manage',
-    loadComponent: () => import('./features/manage-content/manage-content.component').then(m => m.ManageContentComponent)
+    canActivate: [adminGuard],
+    redirectTo: 'admin',
+    pathMatch: 'full'
   },
   {
     path: '**',

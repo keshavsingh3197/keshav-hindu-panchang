@@ -48,7 +48,7 @@ jobs:
           OUT=dist/hindu-panchang/browser
           [ -d "$OUT" ] || OUT=dist/frontend/browser
           cp "$OUT/index.html" "$OUT/404.html"
-          for route in panchang videos itihaas festivals manage; do
+          for route in panchang videos itihaas festivals admin manage; do
             mkdir -p "$OUT/$route"
             cp "$OUT/index.html" "$OUT/$route/index.html"
           done
