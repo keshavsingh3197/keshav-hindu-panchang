@@ -44,9 +44,9 @@ export class PanchangService {
         siteNameHindi: 'पंचांगम् & संस्कृति',
         siteSubtitle: 'Vedic Panchang & Aaj Ka Itihaas',
         defaultCityName: 'New Delhi, India',
-        broadcastChannelName: 'Keshav Singh Official',
-        broadcastChannelUrl: 'https://www.youtube.com/@KeshavSingh',
-        dailyBroadcastBanner: 'Watch Daily Rashifal, Ekadashi Katha & Cultural Documentaries on our YouTube Channel.',
+        broadcastChannelName: '',
+        broadcastChannelUrl: '',
+        dailyBroadcastBanner: 'Daily Panchang briefs, Vrat Katha, Mantra meditations & cultural documentaries synced from connected creator channels.',
         videoCategories: ['Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan']
       }))
     );

@@ -169,6 +169,21 @@ import { AuthService } from '../../../core/services/auth.service';
     .btn-sso-login:hover {
       background: #9a3412;
     }
+    @media (max-width: 900px) {
+      .header-container {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 0.65rem 1rem;
+      }
+      .nav-links {
+        order: 3;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+        gap: 0.4rem;
+      }
+      .nav-link { white-space: nowrap; }
+    }
   `]
 })
 export class HeaderComponent {

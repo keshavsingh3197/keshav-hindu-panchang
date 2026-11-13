@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
+import { PanchangSyncService } from '../../core/services/panchang-sync.service';
+import {
+  PanchangIntegrationSettingsView,
+  PanchangSyncSummary
+} from '../../core/models/ecosystem.models';
 import {
   DailyKatha,
   DailySutra,
@@ -108,6 +113,51 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
               </div>
               <div class="field field-wide"><label>Description</label><textarea rows="2" [(ngModel)]="videoForm.description"></textarea></div>
             </div>
+            <div class="sync-panel">
+              <div class="sync-header">
+                <div>
+                  <h3>📡 Central Channel &amp; Live YouTube Feed Automation</h3>
+                  <p>Pulls enabled Panchang channels from Central Config and imports live YouTube videos via RSS / API v3.</p>
+                </div>
+                <div class="sync-actions">
+                  <button type="button" (click)="syncNow()" [disabled]="syncing()" class="btn-primary">
+                    {{ syncing() ? '⏳ Syncing Live Feeds...' : '🔄 Sync Central Channels & Live Videos' }}
+                  </button>
+                  <button type="button" (click)="purgeLegacy()" class="btn-secondary">🧹 Purge Demo Videos</button>
+                  <button type="button" (click)="exportBackup()" class="btn-secondary">⬇️ Export JSON Backup</button>
+                </div>
+              </div>
+
+              @if (lastSync(); as sum) {
+                <div class="sync-summary-pill">
+                  ✅ Synced {{ sum.channelsSynced }} channel(s), {{ sum.videosSynced }} video(s), purged {{ sum.legacyVideosPurged }} demo row(s)
+                  @if (sum.warnings.length > 0) {
+                    <span>• ⚠️ {{ sum.warnings.join(' | ') }}</span>
+                  }
+                </div>
+              }
+
+              <div class="integration-form">
+                <div class="field">
+                  <label>YouTube Data API v3 Key (Optional — Keyless RSS active automatically)</label>
+                  <input type="password" [(ngModel)]="ytApiKeyInput" [placeholder]="integrations()?.hasYouTubeApiKey ? integrations()!.maskedYouTubeApiKey : 'AIza... (optional for rich stats)'" />
+                </div>
+                <div class="field">
+                  <label>Central Config API URL</label>
+                  <input [(ngModel)]="centralUrlInput" placeholder="https://id.keshavsingh.in/api/config" />
+                </div>
+                <div class="field checkbox-field">
+                  <label><input type="checkbox" [(ngModel)]="autoSyncOnStartup" /> Auto-sync on Backend Startup</label>
+                </div>
+                <div class="btn-row">
+                  <button type="button" (click)="saveIntegrations(false)" class="btn-primary">🔐 Save Integration Settings</button>
+                  @if (integrations()?.hasYouTubeApiKey) {
+                    <button type="button" (click)="saveIntegrations(true)" class="btn-sm danger">Clear Saved Key</button>
+                  }
+                </div>
+              </div>
+            </div>
+
             <div class="btn-row">
               <button (click)="saveVideo()" class="btn-primary">💾 Save Video</button>
               <button (click)="videoForm = emptyVideo()" class="btn-secondary">Reset</button>
@@ -405,17 +455,21 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
             </div>
 
             <hr class="divider" />
-            <h2>Central Global Configuration (Synced Live from admin.keshavsingh.in)</h2>
+            <h2>Central Global Configuration (Synced Live from Central IDP)</h2>
             <div class="global-summary">
               <div><strong>Creator Name:</strong> {{ ecosystem.creatorName() }}</div>
-              <div><strong>YouTube Channel:</strong> {{ ecosystem.youtubeChannelName() }} ({{ ecosystem.youtubeChannelUrl() }})</div>
+              <div><strong>Primary Channel:</strong> {{ ecosystem.youtubeChannelName() || 'Synced via Central Channels' }} {{ ecosystem.youtubeChannelUrl() ? '(' + ecosystem.youtubeChannelUrl() + ')' : '' }}</div>
+              <div><strong>Connected Panchang Channels:</strong> {{ ecosystem.panchangChannels().length }} enabled channel(s)</div>
               <div><strong>Footer Copyright:</strong> {{ ecosystem.copyrightNotice() }}</div>
               <div><strong>Central Websites Synced:</strong> {{ ecosystem.websites().length }} apps</div>
             </div>
             <div class="btn-row">
               <a [href]="ecosystem.adminPortalUrl() + '/website'" target="_blank" rel="noopener" class="btn-primary">
-                Edit Ecosystem Websites in Central Admin →
+                Edit Websites &amp; Channels in Central Admin →
               </a>
+              <button type="button" (click)="syncNow()" [disabled]="syncing()" class="btn-secondary">
+                {{ syncing() ? '⏳ Syncing...' : '🔄 Sync Now from Central Config' }}
+              </button>
             </div>
           </section>
         }
@@ -460,6 +514,13 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
     .btn-sm.danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
     .divider { border: none; border-top: 1px solid #fed7aa; margin: 0.5rem 0; }
     .global-summary { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; color: #431407; }
+    .sync-panel { background: #fffaf5; border: 1px dashed #fdba74; border-radius: 12px; padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: 0.9rem; }
+    .sync-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+    .sync-header h3 { margin: 0 0 0.25rem; font-size: 1rem; color: #7c2d12; }
+    .sync-header p { margin: 0; font-size: 0.84rem; color: #9a3412; }
+    .sync-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .sync-summary-pill { background: #ecfdf5; border: 1px solid #86efac; color: #166534; border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.84rem; font-weight: 600; }
+    .integration-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; align-items: end; border-top: 1px solid #ffedd5; padding-top: 0.85rem; }
   `]
 })
 export class PanchangAdminComponent implements OnInit {
@@ -482,6 +543,14 @@ export class PanchangAdminComponent implements OnInit {
 
   videoForm: SpiritualVideo = this.emptyVideo();
   festivalForm: FestivalItem = this.emptyFestival();
+  private syncService = inject(PanchangSyncService);
+  readonly syncing = signal(false);
+  readonly integrations = signal<PanchangIntegrationSettingsView | null>(null);
+  readonly lastSync = signal<PanchangSyncSummary | null>(null);
+  ytApiKeyInput = '';
+  centralUrlInput = '';
+  autoSyncOnStartup = true;
+
   festivalDateInput = toLocalDateKey();
   kitForm: DevotionalKitItem = this.emptyKit();
   incidentForm: HistoricalIncident = this.emptyIncident();
@@ -493,8 +562,8 @@ export class PanchangAdminComponent implements OnInit {
     siteNameHindi: 'पंचांगम् & संस्कृति',
     siteSubtitle: 'Vedic Panchang & Aaj Ka Itihaas',
     defaultCityName: 'New Delhi, India',
-    broadcastChannelName: 'Keshav Singh Official',
-    broadcastChannelUrl: 'https://www.youtube.com/@KeshavSingh',
+    broadcastChannelName: '',
+    broadcastChannelUrl: '',
     dailyBroadcastBanner: '',
     videoCategories: ['Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan']
   };
@@ -523,6 +592,72 @@ export class PanchangAdminComponent implements OnInit {
     this.panchangService.getSiteConfig().subscribe(cfg => {
       this.siteForm = cfg;
       this.categoriesCsv = (cfg.videoCategories || []).join(', ');
+    });
+    this.syncService.getIntegrations().subscribe({
+      next: iv => {
+        this.integrations.set(iv);
+        this.centralUrlInput = iv.centralConfigUrl || '';
+        this.autoSyncOnStartup = iv.autoSyncOnStartup;
+      }
+    });
+  }
+
+  syncNow(): void {
+    this.syncing.set(true);
+    this.syncService.syncEcosystem().subscribe({
+      next: res => {
+        this.syncing.set(false);
+        this.lastSync.set(res);
+        this.ecosystem.refresh();
+        this.loadAll();
+        this.notify(`Synced ${res.channelsSynced} channels and ${res.videosSynced} videos.`);
+      },
+      error: err => {
+        this.syncing.set(false);
+        this.notifyError('Ecosystem & video sync failed', err);
+      }
+    });
+  }
+
+  purgeLegacy(): void {
+    this.syncService.purgeLegacyVideos().subscribe({
+      next: res => {
+        this.notify(`Purged ${res.removed} legacy/demo video record(s).`);
+        this.panchangService.getAdminVideos().subscribe(v => this.videos.set(v));
+      },
+      error: err => this.notifyError('Purge failed', err)
+    });
+  }
+
+  saveIntegrations(clearKey: boolean): void {
+    this.syncService.updateIntegrations({
+      youTubeApiKey: clearKey ? undefined : (this.ytApiKeyInput || undefined),
+      clearYouTubeApiKey: clearKey,
+      centralConfigUrl: this.centralUrlInput || undefined,
+      autoSyncOnStartup: this.autoSyncOnStartup
+    }).subscribe({
+      next: iv => {
+        this.integrations.set(iv);
+        this.ytApiKeyInput = '';
+        this.notify(clearKey ? 'YouTube API key cleared (keyless RSS active).' : 'Integration settings saved securely.');
+      },
+      error: err => this.notifyError('Failed to save integration settings', err)
+    });
+  }
+
+  exportBackup(): void {
+    this.syncService.exportBundle().subscribe({
+      next: bundle => {
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `panchang-backup-${toLocalDateKey()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.notify('Backup JSON downloaded.');
+      },
+      error: err => this.notifyError('Export failed', err)
     });
   }
 
@@ -715,15 +850,15 @@ export class PanchangAdminComponent implements OnInit {
       durationMinutes: '12:00',
       viewCount: 0,
       isFeaturedDailyVideo: true,
-      channelName: 'Keshav Singh Official',
-      channelUrl: 'https://www.youtube.com/@KeshavSingh'
+      channelName: this.ecosystem?.youtubeChannelName() || '',
+      channelUrl: this.ecosystem?.youtubeChannelUrl() || ''
     };
   }
   emptyFestival(): FestivalItem {
     return { id: '', nameHindi: '', nameEnglish: '', date: toLocalDateKey(), tithi: '', monthVedic: '', description: '', ritualsAndPujaVidhi: '', fastingRules: '', isMajorFestival: true };
   }
   emptyKit(): DevotionalKitItem {
-    return { id: '', title: '', icon: '🪔', description: '', actionLabel: 'Explore →', externalUrl: 'https://panchang.keshavsingh.in/videos', sortOrder: 40, isActive: true };
+    return { id: '', title: '', icon: '🪔', description: '', actionLabel: 'Explore →', externalUrl: '/videos', sortOrder: 40, isActive: true };
   }
   emptyIncident(): HistoricalIncident {
     return { id: '', dateKey: toLocalDateKey().substring(5), year: new Date().getFullYear(), title: '', category: 'Indian History', description: '', culturalSignificance: '' };

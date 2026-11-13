@@ -18,6 +18,12 @@ builder.Services.AddSingleton<HybridDataStore>();
 builder.Services.AddSingleton<VedicPanchangCalculator>();
 builder.Services.AddSingleton<CulturalContentService>();
 builder.Services.AddSingleton<VideoCurationService>();
+builder.Services.AddSingleton<IntegrationConfigService>();
+builder.Services.AddHttpClient("CentralConfigClient", c => c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient("YouTubeClient", c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddSingleton<YouTubeFeedSyncService>();
+builder.Services.AddSingleton<CentralEcosystemSyncService>();
+builder.Services.AddHostedService<EcosystemWarmupService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(

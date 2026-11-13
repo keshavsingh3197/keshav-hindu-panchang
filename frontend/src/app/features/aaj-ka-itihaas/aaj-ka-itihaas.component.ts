@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PanchangService } from '../../core/services/panchang.service';
@@ -47,25 +47,44 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
 
       <!-- Historical Incidents Timeline -->
       <section class="timeline-section">
-        <h2>🇮🇳 आज के दिन के ऐतिहासिक प्रसंग एवं घटनाएं (Historical Incidents)</h2>
-
-        <div class="timeline-list">
-          @for (inc of incidents(); track inc.id) {
-            <div class="timeline-item">
-              <div class="year-marker">{{ inc.year }}</div>
-              <div class="incident-card">
-                <div class="inc-head">
-                  <span class="inc-cat">{{ inc.category }}</span>
-                  <h3>{{ inc.title }}</h3>
-                </div>
-                <p class="inc-desc">{{ inc.description }}</p>
-                <div class="significance-box">
-                  <strong>सांस्कृतिक महत्व:</strong> {{ inc.culturalSignificance }}
-                </div>
-              </div>
+        <div class="timeline-header-row">
+          <h2>🇮🇳 आज के दिन के ऐतिहासिक प्रसंग एवं घटनाएं ({{ filteredIncidents().length }})</h2>
+          @if (categories().length > 1) {
+            <div class="cat-pills">
+              @for (cat of categories(); track cat) {
+                <button
+                  type="button"
+                  class="cat-pill"
+                  [class.active]="selectedCategory() === cat"
+                  (click)="selectedCategory.set(cat)">
+                  {{ cat }}
+                </button>
+              }
             </div>
           }
         </div>
+
+        @if (filteredIncidents().length === 0) {
+          <div class="empty-history">इस तिथि के लिए अभी कोई ऐतिहासिक प्रसंग दर्ज नहीं है।</div>
+        } @else {
+          <div class="timeline-list">
+            @for (inc of filteredIncidents(); track inc.id) {
+              <div class="timeline-item">
+                <div class="year-marker">{{ inc.year }}</div>
+                <div class="incident-card">
+                  <div class="inc-head">
+                    <span class="inc-cat">{{ inc.category }}</span>
+                    <h3>{{ inc.title }}</h3>
+                  </div>
+                  <p class="inc-desc">{{ inc.description }}</p>
+                  <div class="significance-box">
+                    <strong>सांस्कृतिक महत्व:</strong> {{ inc.culturalSignificance }}
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
       </section>
     </div>
   `,
@@ -230,6 +249,39 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
       font-size: 0.95rem;
       line-height: 1.55;
     }
+    .timeline-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .timeline-header-row h2 { margin: 0; font-size: 1.35rem; color: #431407; }
+    .cat-pills { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+    .cat-pill {
+      background: #ffffff;
+      border: 1px solid #fed7aa;
+      color: #78350f;
+      padding: 0.32rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .cat-pill.active {
+      background: #ea580c;
+      color: #ffffff;
+      border-color: #ea580c;
+    }
+    .empty-history {
+      background: #fffaf5;
+      border: 1px dashed #fdba74;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      color: #9a3412;
+    }
     .significance-box {
       font-size: 0.85rem;
       background: #fffaf5;
@@ -246,12 +298,26 @@ export class AajKaItihaasComponent implements OnInit {
   readonly currentDate = signal<string>(toLocalDateKey());
   readonly incidents = signal<HistoricalIncident[]>([]);
   readonly dailyKatha = signal<DailyKatha | null>(null);
+  readonly selectedCategory = signal<string>('All');
+
+  readonly categories = computed(() => {
+    const cats = new Set<string>();
+    this.incidents().forEach(i => { if (i.category) cats.add(i.category); });
+    return ['All', ...Array.from(cats)];
+  });
+
+  readonly filteredIncidents = computed(() => {
+    const cat = this.selectedCategory();
+    if (cat === 'All') return this.incidents();
+    return this.incidents().filter(i => i.category === cat);
+  });
 
   ngOnInit(): void {
     this.loadData();
   }
 
   loadData(): void {
+    this.selectedCategory.set('All');
     this.panchangService.getAajKaItihaas(this.currentDate()).subscribe(inc => this.incidents.set(inc));
     this.panchangService.getDailyKatha(this.currentDate()).subscribe(k => this.dailyKatha.set(k));
   }
