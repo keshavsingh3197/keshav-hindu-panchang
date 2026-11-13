@@ -20,6 +20,10 @@ export interface CentralChannelItem {
 export interface PanchangIntegrationSettingsView {
   hasYouTubeApiKey: boolean;
   maskedYouTubeApiKey: string;
+  youTubeKeyManagedByCentral: boolean;
+  integrationSource: string;
+  centralAdSenseConfigured: boolean;
+  centralAdSenseClientId: string;
   centralConfigUrl: string;
   autoSyncOnStartup: boolean;
   lastEcosystemSyncUtc?: string | null;

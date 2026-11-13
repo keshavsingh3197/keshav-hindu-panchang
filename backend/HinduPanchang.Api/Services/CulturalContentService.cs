@@ -12,10 +12,12 @@ public class CulturalContentService
     private const string SiteConfigCollection = "site_config";
 
     private readonly HybridDataStore _store;
+    private readonly CentralAdminConfigReader? _centralReader;
 
-    public CulturalContentService(HybridDataStore store)
+    public CulturalContentService(HybridDataStore store, CentralAdminConfigReader? centralReader = null)
     {
         _store = store;
+        _centralReader = centralReader;
     }
 
     public string StorageMode => _store.StorageMode;
@@ -120,25 +122,52 @@ public class CulturalContentService
     {
         var cfg = await _store.GetSingletonAsync(SiteConfigCollection, "default", PanchangSeedData.DefaultSiteConfig);
         cfg.Ads ??= new AdMonetizationConfig();
+
+        var centralId = await ResolveCentralAdSenseClientIdAsync();
+        if (!string.IsNullOrEmpty(centralId))
+            cfg.Ads.AdSenseClientId = centralId;
+
         return cfg;
     }
 
-    public Task<PanchangSiteConfig> SaveSiteConfigAsync(PanchangSiteConfig config)
+    public async Task<PanchangSiteConfig> SaveSiteConfigAsync(PanchangSiteConfig config)
     {
         config.Id = "default";
         config.UpdatedAt = DateTime.UtcNow;
         config.VideoCategories ??= [];
-        config.Ads = SanitizeAdConfig(config.Ads);
-        return _store.SaveSingletonAsync(SiteConfigCollection, "default", config);
+
+        var centralId = await ResolveCentralAdSenseClientIdAsync();
+        config.Ads = SanitizeAdConfig(config.Ads, centralId);
+
+        var saved = await _store.SaveSingletonAsync(SiteConfigCollection, "default", config);
+        if (!string.IsNullOrEmpty(centralId))
+            saved.Ads.AdSenseClientId = centralId;
+
+        return saved;
     }
 
-    private static AdMonetizationConfig SanitizeAdConfig(AdMonetizationConfig? input)
+    private async Task<string> ResolveCentralAdSenseClientIdAsync()
+    {
+        if (_centralReader is null) return string.Empty;
+        var snap = await _centralReader.GetSnapshotAsync();
+        var id = (snap.AdSenseClientId ?? string.Empty).Trim();
+        return Regex.IsMatch(id, @"^ca-pub-\d{10,20}$") ? id : string.Empty;
+    }
+
+    private static AdMonetizationConfig SanitizeAdConfig(AdMonetizationConfig? input, string centralAdSenseClientId = "")
     {
         if (input is null) return new AdMonetizationConfig();
 
         string clientId = (input.AdSenseClientId ?? string.Empty).Trim();
         if (!Regex.IsMatch(clientId, @"^ca-pub-\d{10,20}$"))
             clientId = string.Empty;
+
+        // Avoid duplicating Central Admin's publisher ID in Panchang's local database.
+        if (!string.IsNullOrEmpty(centralAdSenseClientId) &&
+            string.Equals(clientId, centralAdSenseClientId, StringComparison.OrdinalIgnoreCase))
+        {
+            clientId = string.Empty;
+        }
 
         static string CleanSlot(string? raw)
         {
@@ -153,9 +182,11 @@ public class CulturalContentService
             sponsorUrl = string.Empty;
         }
 
+        bool hasEffectiveClient = !string.IsNullOrEmpty(clientId) || !string.IsNullOrEmpty(centralAdSenseClientId);
+
         return new AdMonetizationConfig
         {
-            AdsEnabled = input.AdsEnabled && !string.IsNullOrEmpty(clientId),
+            AdsEnabled = input.AdsEnabled && hasEffectiveClient,
             AdSenseClientId = clientId,
             HeaderAdSlotId = CleanSlot(input.HeaderAdSlotId),
             InFeedAdSlotId = CleanSlot(input.InFeedAdSlotId),

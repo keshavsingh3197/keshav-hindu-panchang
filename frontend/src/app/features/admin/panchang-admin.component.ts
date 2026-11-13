@@ -140,8 +140,19 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
 
               <div class="integration-form">
                 <div class="field">
-                  <label>YouTube Data API v3 Key (Optional — Keyless RSS active automatically)</label>
-                  <input type="password" [(ngModel)]="ytApiKeyInput" [placeholder]="integrations()?.hasYouTubeApiKey ? integrations()!.maskedYouTubeApiKey : 'AIza... (optional for rich stats)'" />
+                  <label>YouTube Data API v3 Key (Central Admin)</label>
+                  <div class="central-status-box">
+                    @if (integrations()?.youTubeKeyManagedByCentral) {
+                      <span class="status-pill ok">✓ Active from Central Admin ({{ integrations()!.maskedYouTubeApiKey }})</span>
+                    } @else if (integrations()?.hasYouTubeApiKey) {
+                      <span class="status-pill ok">✓ Active from {{ integrations()?.integrationSource }} ({{ integrations()!.maskedYouTubeApiKey }})</span>
+                    } @else {
+                      <span class="status-pill muted">Keyless RSS active — optional API key not set</span>
+                    }
+                    <a [href]="ecosystem.adminPortalUrl() + '/settings?tab=integrations'" target="_blank" rel="noopener" class="central-link">
+                      Manage Shared Keys in Central Admin &rarr;
+                    </a>
+                  </div>
                 </div>
                 <div class="field">
                   <label>Central Config API URL</label>
@@ -151,9 +162,9 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
                   <label><input type="checkbox" [(ngModel)]="autoSyncOnStartup" /> Auto-sync on Backend Startup</label>
                 </div>
                 <div class="btn-row">
-                  <button type="button" (click)="saveIntegrations(false)" class="btn-primary">🔐 Save Integration Settings</button>
-                  @if (integrations()?.hasYouTubeApiKey) {
-                    <button type="button" (click)="saveIntegrations(true)" class="btn-sm danger">Clear Saved Key</button>
+                  <button type="button" (click)="saveIntegrations(false)" class="btn-primary">💾 Save Sync Settings</button>
+                  @if (integrations()?.integrationSource === 'local') {
+                    <button type="button" (click)="saveIntegrations(true)" class="btn-sm danger">Clear Legacy Local Key</button>
                   }
                 </div>
               </div>
@@ -458,7 +469,7 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
             <hr class="divider" />
             <h2>💰 Google AdSense &amp; Sponsor Monetization</h2>
             <p class="muted">
-              Configure runtime AdSense Publisher ID (<code>ca-pub-...</code>) and slot IDs or a devotional kit/sponsor banner.
+              AdSense Publisher ID (<code>ca-pub-...</code>) is managed centrally across all apps; configure Panchang-specific slot IDs and sponsor fallbacks here.
               Unconfigured slots stay completely hidden.
             </p>
             <div class="form-grid">
@@ -469,8 +480,17 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
                 </label>
               </div>
               <div class="field">
-                <label>AdSense Client ID (ca-pub-...)</label>
-                <input [(ngModel)]="adsForm.adSenseClientId" placeholder="ca-pub-0000000000000000" />
+                <label>AdSense Publisher ID (Central Admin)</label>
+                <div class="central-status-box">
+                  @if (integrations()?.centralAdSenseConfigured || adsForm.adSenseClientId) {
+                    <span class="status-pill ok">✓ {{ integrations()?.centralAdSenseClientId || adsForm.adSenseClientId }}</span>
+                  } @else {
+                    <span class="status-pill muted">Not configured in Central Admin</span>
+                  }
+                  <a [href]="ecosystem.adminPortalUrl() + '/settings?tab=integrations'" target="_blank" rel="noopener" class="central-link">
+                    Edit in Central Admin &rarr;
+                  </a>
+                </div>
               </div>
               <div class="field"><label>Ad Label</label><input [(ngModel)]="adsForm.adLabel" placeholder="Advertisement" /></div>
               <div class="field"><label>Header Ad Slot ID</label><input [(ngModel)]="adsForm.headerAdSlotId" placeholder="10-digit slot ID" /></div>
@@ -537,6 +557,13 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
     .field { display: flex; flex-direction: column; gap: 0.3rem; }
     .field-wide { grid-column: 1 / -1; }
     .field label { font-size: 0.78rem; font-weight: 700; color: #78350f; text-transform: uppercase; letter-spacing: 0.02em; }
+    .field label.chk { display: flex; flex-direction: row; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 600; color: #431407; text-transform: none; letter-spacing: 0; cursor: pointer; }
+    .field label.chk input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: #ea580c; margin: 0; cursor: pointer; }
+    .central-status-box { display: flex; flex-direction: column; gap: 0.3rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 7px; padding: 0.5rem 0.65rem; font-size: 0.85rem; }
+    .status-pill.ok { color: #065f46; font-weight: 600; }
+    .status-pill.muted { color: #9a3412; font-weight: 500; }
+    .central-link { color: #c2410c; font-weight: 700; text-decoration: none; font-size: 0.82rem; }
+    .central-link:hover { text-decoration: underline; }
     .field input, .field select, .field textarea { border: 1px solid #fed7aa; border-radius: 7px; padding: 0.5rem 0.65rem; font-size: 0.9rem; color: #1e293b; font-family: inherit; }
     .checkbox-field { justify-content: flex-end; }
     .checkbox-field label { text-transform: none; font-size: 0.9rem; display: flex; align-items: center; gap: 0.45rem; cursor: pointer; }
@@ -586,7 +613,6 @@ export class PanchangAdminComponent implements OnInit {
   readonly syncing = signal(false);
   readonly integrations = signal<PanchangIntegrationSettingsView | null>(null);
   readonly lastSync = signal<PanchangSyncSummary | null>(null);
-  ytApiKeyInput = '';
   centralUrlInput = '';
   autoSyncOnStartup = true;
 
@@ -672,15 +698,13 @@ export class PanchangAdminComponent implements OnInit {
 
   saveIntegrations(clearKey: boolean): void {
     this.syncService.updateIntegrations({
-      youTubeApiKey: clearKey ? undefined : (this.ytApiKeyInput || undefined),
       clearYouTubeApiKey: clearKey,
       centralConfigUrl: this.centralUrlInput || undefined,
       autoSyncOnStartup: this.autoSyncOnStartup
     }).subscribe({
       next: iv => {
         this.integrations.set(iv);
-        this.ytApiKeyInput = '';
-        this.notify(clearKey ? 'YouTube API key cleared (keyless RSS active).' : 'Integration settings saved securely.');
+        this.notify(clearKey ? 'Legacy local YouTube API key cleared.' : 'Sync settings saved securely.');
       },
       error: err => this.notifyError('Failed to save integration settings', err)
     });
