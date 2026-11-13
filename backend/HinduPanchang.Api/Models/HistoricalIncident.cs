@@ -10,6 +10,7 @@ public class HistoricalIncident
     public string Description { get; set; } = string.Empty;
     public string CulturalSignificance { get; set; } = string.Empty;
     public string? RelatedVideoUrl { get; set; }
+    public bool IsExactDateMatch { get; set; } = true;
 }
 
 public class DailyKatha

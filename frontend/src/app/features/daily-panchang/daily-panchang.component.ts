@@ -45,7 +45,9 @@ import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
         <section class="panchang-hero">
           <div class="hero-top">
             <div class="hero-title-box">
-              <span class="vedic-date-pill">{{ p.paksha }} • {{ p.monthPurnimanta }} मास</span>
+              <span class="vedic-date-pill">
+                {{ p.paksha }} • पूर्णिमांत: {{ p.monthPurnimanta }} • अमांत: {{ p.monthAmanta }}@if (p.isAdhikaMaas) { • अधिक मास}
+              </span>
               <h1>{{ p.formattedDate }}</h1>
               <p class="samvat-text">
                 विक्रम संवत: <strong>{{ p.vikramSamvat }}</strong> | 
@@ -70,7 +72,7 @@ import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
         <section class="section">
           <div class="section-title">
             <h2>पंचांग के पांच अंग (The 5 Core Limbs)</h2>
-            <span class="sub-badge">Vedic Astrological Alignments</span>
+            <span class="sub-badge">{{ p.ayanamsaName || 'Lahiri Chitrapaksha' }} • {{ p.calculationNote || 'Sunrise Astronomical Ephemeris' }}</span>
           </div>
 
           <div class="grid grid-5">

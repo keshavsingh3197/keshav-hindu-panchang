@@ -244,4 +244,108 @@ public class HinduPanchangTests
         Assert.NotNull(attr);
         Assert.Equal("Admin", attr!.Roles);
     }
+
+    [Fact]
+    public async Task VedicPanchangCalculator_ComputesAccurateAstronomicalPanchang_ForDec31_2026_And_Nov13_2026()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var calc = new VedicPanchangCalculator(CreateStore(root));
+
+            // Dec 31, 2026 (New Delhi)
+            var dec31 = await calc.CalculateForDateAsync(new DateTime(2026, 12, 31), "New Delhi, India");
+            Assert.Equal("2083 (Raudra)", dec31.VikramSamvat);
+            Assert.Equal("1948 (Parabhava)", dec31.ShakaSamvat);
+            Assert.Equal("Pausha", dec31.MonthPurnimanta);
+            Assert.Equal("Margashirsha", dec31.MonthAmanta);
+            Assert.False(dec31.IsAdhikaMaas);
+            Assert.Equal("Krishna Ashtami", dec31.Tithi);
+            Assert.Equal("Hasta", dec31.Nakshatra);
+            Assert.Contains("Dhanu", dec31.SunSign);
+            Assert.Contains("Kanya", dec31.MoonSign);
+            Assert.Equal("Kaulava", dec31.Karana); // Second half of Ashtami shares Tithi & Karana boundary
+            Assert.DoesNotContain("Active on", dec31.YogaEndTime);
+
+            // Parse Dec 31 Tithi & Nakshatra end times (reference Drik: Krishna Ashtami ~12:32 PM, Hasta ~04:13 PM)
+            Assert.Contains("12:", dec31.TithiEndTime);
+            Assert.Contains("PM", dec31.TithiEndTime);
+            Assert.Contains("04:", dec31.NakshatraEndTime);
+            Assert.Contains("PM", dec31.NakshatraEndTime);
+            Assert.Contains("12:", dec31.Moonset); // Reference ~12:10 PM
+
+            // Nov 13, 2026 (New Delhi) — first-half Karana differs from Tithi end time
+            var nov13 = await calc.CalculateForDateAsync(new DateTime(2026, 11, 13), "New Delhi, India");
+            Assert.Equal("Kartika", nov13.MonthPurnimanta);
+            Assert.Equal("Kartika", nov13.MonthAmanta);
+            Assert.Equal("Shukla Chaturthi", nov13.Tithi);
+            Assert.Equal("Mula", nov13.Nakshatra);
+            Assert.Contains("Tula", nov13.SunSign);
+            Assert.Contains("Dhanu", nov13.MoonSign);
+            Assert.NotEqual(nov13.TithiEndTime, nov13.KaranaEndTime);
+
+            // May 25, 2026: Adhika Jyeshtha in 2026
+            var may25 = await calc.CalculateForDateAsync(new DateTime(2026, 5, 25), "New Delhi, India");
+            Assert.True(may25.IsAdhikaMaas);
+            Assert.Contains("Adhika Jyeshtha", may25.MonthPurnimanta);
+
+            // Chaitra Shukla New Year Samvat roll-over in 2026
+            var mar15 = await calc.CalculateForDateAsync(new DateTime(2026, 3, 15), "New Delhi, India");
+            var mar21 = await calc.CalculateForDateAsync(new DateTime(2026, 3, 21), "New Delhi, India");
+            Assert.StartsWith("2082", mar15.VikramSamvat);
+            Assert.StartsWith("2083", mar21.VikramSamvat);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public async Task DynamicFestivals_ComputesAstronomicalDates_WithoutRelativeAddDays()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            Assert.Empty(PanchangSeedData.DefaultFestivals());
+
+            var calc2026 = VedicPanchangCalculator.ComputeDynamicFestivalsForWindow(new DateTime(2026, 11, 1), 90);
+            Assert.Contains(calc2026, f => f.NameEnglish.Contains("Deepawali") && f.Date.Date == new DateTime(2026, 11, 8));
+            Assert.Contains(calc2026, f => f.NameEnglish.Contains("Devutthana") && (f.Date.Date == new DateTime(2026, 11, 20) || f.Date.Date == new DateTime(2026, 11, 21)));
+            Assert.Contains(calc2026, f => f.NameEnglish.Contains("Kartik Purnima") && f.Date.Date == new DateTime(2026, 11, 24));
+            Assert.Contains(calc2026, f => f.NameEnglish.Contains("Vivah Panchami") && f.Date.Date == new DateTime(2026, 12, 14));
+            Assert.Contains(calc2026, f => f.NameEnglish.Contains("Gita Jayanti") && f.Date.Date == new DateTime(2026, 12, 20));
+
+            // CulturalContentService ignores stale fake f-1..f-4 DB rows and still returns dynamic festivals + custom admin additions
+            var store = CreateStore(root);
+            var cultural = new CulturalContentService(store);
+            await cultural.UpsertFestivalAsync(new FestivalItem
+            {
+                Id = "f-1",
+                NameEnglish = "Devutthana Ekadashi",
+                Date = DateTime.UtcNow.Date.AddDays(3),
+                Description = "Marks the awakening of Lord Vishnu after Chaturmas; legacy fake seed."
+            });
+            await cultural.UpsertFestivalAsync(new FestivalItem
+            {
+                Id = "custom-temple-1",
+                NameEnglish = "Custom Temple Utsav",
+                NameHindi = "मंदिर उत्सव",
+                Date = DateTime.UtcNow.Date.AddDays(15),
+                MonthVedic = "Kartika",
+                Tithi = "Shukla Ashtami",
+                IsMajorFestival = true
+            });
+
+            var upcoming = await cultural.GetUpcomingFestivalsAsync();
+            Assert.True(upcoming.Count >= 20);
+            Assert.Contains(upcoming, f => f.Id == "custom-temple-1");
+            Assert.Contains(upcoming, f => f.IsDynamicCalculated);
+            Assert.DoesNotContain(upcoming, f => f.Id == "f-1");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
 }

@@ -12,7 +12,10 @@ export interface PanchangData {
   shakaSamvat: string;
   monthPurnimanta: string;
   monthAmanta: string;
+  isAdhikaMaas?: boolean;
   paksha: string;
+  ayanamsaName?: string;
+  calculationNote?: string;
   dayOfWeek: string;
   tithi: string;
   tithiEndTime: string;
@@ -50,6 +53,7 @@ export interface HistoricalIncident {
   description: string;
   culturalSignificance: string;
   relatedVideoUrl?: string;
+  isExactDateMatch?: boolean;
 }
 
 export interface DailyKatha {
@@ -72,6 +76,8 @@ export interface FestivalItem {
   ritualsAndPujaVidhi: string;
   fastingRules: string;
   isMajorFestival: boolean;
+  category?: string;
+  isDynamicCalculated?: boolean;
 }
 
 export interface PanchangCity {

@@ -9,7 +9,10 @@ public class PanchangData
     public string ShakaSamvat { get; set; } = "1948 (Krodhi)";
     public string MonthPurnimanta { get; set; } = "Kartika";
     public string MonthAmanta { get; set; } = "Kartika";
+    public bool IsAdhikaMaas { get; set; }
     public string Paksha { get; set; } = "Shukla Paksha";
+    public string AyanamsaName { get; set; } = "Lahiri (Chitrapaksha)";
+    public string CalculationNote { get; set; } = string.Empty;
     public string DayOfWeek { get; set; } = "Thursday";
 
     // 5 Limbs of Panchang (Pancha-Anga)

@@ -48,7 +48,11 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
       <!-- Historical Incidents Timeline -->
       <section class="timeline-section">
         <div class="timeline-header-row">
-          <h2>🇮🇳 आज के दिन के ऐतिहासिक प्रसंग एवं घटनाएं ({{ filteredIncidents().length }})</h2>
+          <h2>
+            {{ hasExactDateMatches()
+              ? '🇮🇳 आज के दिन के ऐतिहासिक प्रसंग एवं घटनाएं (' + filteredIncidents().length + ')'
+              : '📜 सांस्कृतिक एवं ऐतिहासिक धरोहर संग्रह (' + filteredIncidents().length + ')' }}
+          </h2>
           @if (categories().length > 1) {
             <div class="cat-pills">
               @for (cat of categories(); track cat) {
@@ -299,6 +303,10 @@ export class AajKaItihaasComponent implements OnInit {
   readonly incidents = signal<HistoricalIncident[]>([]);
   readonly dailyKatha = signal<DailyKatha | null>(null);
   readonly selectedCategory = signal<string>('All');
+
+  readonly hasExactDateMatches = computed(() =>
+    this.incidents().some(i => i.isExactDateMatch !== false)
+  );
 
   readonly categories = computed(() => {
     const cats = new Set<string>();

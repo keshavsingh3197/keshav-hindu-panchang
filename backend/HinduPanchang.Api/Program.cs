@@ -72,9 +72,15 @@ builder.Services.AddCors(options =>
 
 // Auth (JWT validation trusting admin.keshavsingh.in / id.keshavsingh.in IdP)
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var issuer = jwtSection["Issuer"] ?? "keshavsingh-idp";
-var audience = jwtSection["Audience"] ?? "keshavsingh-apps";
-var signingKey = jwtSection["SigningKey"] ?? "dev_signing_key_for_local_keshavsingh_ecosystem_32chars!";
+var issuer = !string.IsNullOrWhiteSpace(jwtSection["Issuer"]) ? jwtSection["Issuer"]!.Trim() : "keshavsingh-idp";
+var audience = !string.IsNullOrWhiteSpace(jwtSection["Audience"]) ? jwtSection["Audience"]!.Trim() : "keshavsingh-apps";
+var rawSigningKey = jwtSection["SigningKey"] ?? builder.Configuration["JWT_SIGNING_KEY"];
+var hasConfiguredSigningKey = !string.IsNullOrWhiteSpace(rawSigningKey) && rawSigningKey.Trim().Length >= 32;
+var signingKey = !string.IsNullOrWhiteSpace(rawSigningKey)
+    ? rawSigningKey.Trim()
+    : (builder.Environment.IsDevelopment()
+        ? "dev_signing_key_for_local_keshavsingh_ecosystem_32chars!"
+        : "__UNCONFIGURED_JWT_SIGNING_KEY_SET_ENV_ON_RENDER__");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -97,6 +103,36 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
         options.Events = new JwtBearerEvents
         {
+            OnAuthenticationFailed = ctx =>
+            {
+                var logger = ctx.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("HinduPanchang.Auth");
+                if (!hasConfiguredSigningKey)
+                {
+                    logger.LogError(
+                        "JWT validation failed ({Message}) because Jwt:SigningKey is unset/empty. Configure Jwt__SigningKey on Render to match admin-api.",
+                        ctx.Exception.Message);
+                }
+                return Task.CompletedTask;
+            },
+            OnChallenge = async ctx =>
+            {
+                ctx.HandleResponse();
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                ctx.Response.ContentType = "application/json";
+                var err = ctx.Error ?? "invalid_token";
+                ctx.Response.Headers.WWWAuthenticate = $"Bearer error=\"{err}\"";
+                await ctx.Response.WriteAsJsonAsync(new
+                {
+                    error = err,
+                    code = !hasConfiguredSigningKey ? "jwt_signing_key_unconfigured" : "invalid_or_expired_token",
+                    message = !hasConfiguredSigningKey
+                        ? "Server JWT SigningKey is not configured on hindu-panchang-api. Set Jwt__SigningKey on Render to match admin-api."
+                        : "Your SSO session token could not be verified. Sign out & sign in again via SSO.",
+                    hasConfiguredSigningKey
+                });
+            },
             OnTokenValidated = context =>
             {
                 if (context.Principal?.Identity is ClaimsIdentity identity)
