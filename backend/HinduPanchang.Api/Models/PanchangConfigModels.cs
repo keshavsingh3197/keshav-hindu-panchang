@@ -94,6 +94,10 @@ public class PanchangIntegrationSettingsView
 {
     public bool HasYouTubeApiKey { get; set; }
     public string MaskedYouTubeApiKey { get; set; } = string.Empty;
+    public bool YouTubeKeyManagedByCentral { get; set; }
+    public string IntegrationSource { get; set; } = "none";
+    public bool CentralAdSenseConfigured { get; set; }
+    public string CentralAdSenseClientId { get; set; } = string.Empty;
     public string CentralConfigUrl { get; set; } = "https://id.keshavsingh.in/api/config";
     public bool AutoSyncOnStartup { get; set; } = true;
     public DateTime? LastEcosystemSyncUtc { get; set; }

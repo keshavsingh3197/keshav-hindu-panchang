@@ -25,6 +25,12 @@ services:
         sync: false
       - key: Mongo__Database
         value: HinduPanchangDb
+      - key: CentralMongo__ConnectionString
+        sync: false
+      - key: CentralMongo__DatabaseName
+        value: AdminDb
+      - key: Encryption__DataKey
+        sync: false
       - key: Ecosystem__AdminConfigUrl
         value: https://id.keshavsingh.in/api/config
     healthCheckPath: /health

@@ -221,8 +221,8 @@ public class HinduPanchangTests
             Assert.True(view.HasYouTubeApiKey);
             Assert.False(view.AutoSyncOnStartup);
             Assert.DoesNotContain("SecretKey", view.MaskedYouTubeApiKey);
-            Assert.StartsWith("AIza", view.MaskedYouTubeApiKey);
-            Assert.EndsWith("7766", view.MaskedYouTubeApiKey);
+            Assert.DoesNotContain("AIza", view.MaskedYouTubeApiKey);
+            Assert.Equal("••••7766", view.MaskedYouTubeApiKey);
 
             // Submitting masked string should preserve existing secret without overwriting it
             await svc.UpdateAsync(new UpdatePanchangIntegrationsRequest
