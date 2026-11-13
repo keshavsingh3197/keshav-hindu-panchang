@@ -110,82 +110,12 @@ public static class PanchangSeedData
 
     public static List<DevotionalKitItem> DefaultDevotionalKits() =>
     [
-        new() { Id = "kit-1", Icon = "🪔", Title = "Puja Samagri & Brass Diyas", Description = "Organic cow-ghee wicks, brass pancha-aarti lamp, camphor, and sacred dhoop for home worship.", ActionLabel = "View Puja Checklist", ExternalUrl = "https://panchang.keshavsingh.in/videos", SortOrder = 10, IsActive = true },
-        new() { Id = "kit-2", Icon = "📿", Title = "Rudraksha & Tulsi Japa Mala", Description = "108-bead certified Tulsi and 5-Mukhi Rudraksha malas for daily mantra sadhana and meditation.", ActionLabel = "Explore Mantra Videos", ExternalUrl = "https://panchang.keshavsingh.in/videos", SortOrder = 20, IsActive = true },
-        new() { Id = "kit-3", Icon = "📖", Title = "Animated Vedic Stories", Description = "Explore visual AI-crafted Pauranik storytelling and kids spiritual series made with Studio AI.", ActionLabel = "Create on Studio AI →", ExternalUrl = "https://studio.keshavsingh.in", SortOrder = 30, IsActive = true }
+        new() { Id = "kit-1", Icon = "🪔", Title = "Puja Samagri & Brass Diyas", Description = "Organic cow-ghee wicks, brass pancha-aarti lamp, camphor, and sacred dhoop for home worship.", ActionLabel = "View Puja Videos", ExternalUrl = "/videos", SortOrder = 10, IsActive = true },
+        new() { Id = "kit-2", Icon = "📿", Title = "Rudraksha & Tulsi Japa Mala", Description = "108-bead certified Tulsi and 5-Mukhi Rudraksha malas for daily mantra sadhana and meditation.", ActionLabel = "Explore Mantra Videos", ExternalUrl = "/videos", SortOrder = 20, IsActive = true },
+        new() { Id = "kit-4", Icon = "📜", Title = "Daily Pauranik Katha & Itihaas", Description = "Read today's inspiring Vedic story, moral sloka, and Indian cultural milestones.", ActionLabel = "Read Aaj Ka Itihaas →", ExternalUrl = "/itihaas", SortOrder = 40, IsActive = true }
     ];
 
-    public static List<SpiritualVideo> DefaultVideos() =>
-    [
-        new()
-        {
-            Id = "vid-1",
-            Title = "आज का दैनिक पंचांग, शुभ मुहूर्त एवं 12 राशियों का राशिफल | Daily Panchang Brief",
-            Description = "Daily Vedic Panchang timings, Abhijit Muhurat, Rahu Kaal caution window, and planetary guidance.",
-            YouTubeUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-            YouTubeVideoId = "jNQXAC9IVRw",
-            EmbedUrl = "https://www.youtube.com/embed/jNQXAC9IVRw",
-            ThumbnailUrl = "https://img.youtube.com/vi/jNQXAC9IVRw/hqdefault.jpg",
-            Category = "Daily News & Rashifal",
-            PublishedDate = DateTime.UtcNow,
-            DurationMinutes = "14:20",
-            ViewCount = 42800,
-            IsFeaturedDailyVideo = true,
-            ChannelName = "Keshav Singh Official",
-            ChannelUrl = "https://www.youtube.com/@KeshavSingh"
-        },
-        new()
-        {
-            Id = "vid-2",
-            Title = "देवउठनी एकादशी व्रत कथा एवं तुलसी विवाह विधि | Prabodhini Ekadashi Katha",
-            Description = "Full sacred story of Prabodhini Ekadashi and step-by-step home Tulsi Vivah puja vidhi.",
-            YouTubeUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-            YouTubeVideoId = "jNQXAC9IVRw",
-            EmbedUrl = "https://www.youtube.com/embed/jNQXAC9IVRw",
-            ThumbnailUrl = "https://img.youtube.com/vi/jNQXAC9IVRw/mqdefault.jpg",
-            Category = "Pauranik Katha",
-            PublishedDate = DateTime.UtcNow.AddDays(-1),
-            DurationMinutes = "18:45",
-            ViewCount = 68400,
-            IsFeaturedDailyVideo = false,
-            ChannelName = "Keshav Singh Official",
-            ChannelUrl = "https://www.youtube.com/@KeshavSingh"
-        },
-        new()
-        {
-            Id = "vid-3",
-            Title = "श्री महामृत्युंजय मंत्र 108 बार जाप | Maha Mrityunjaya Mantra Chanting",
-            Description = "Meditation-grade 108 mantra repetition for calmness, inner strength, and health.",
-            YouTubeUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-            YouTubeVideoId = "jNQXAC9IVRw",
-            EmbedUrl = "https://www.youtube.com/embed/jNQXAC9IVRw",
-            ThumbnailUrl = "https://img.youtube.com/vi/jNQXAC9IVRw/mqdefault.jpg",
-            Category = "Mantra & Meditation",
-            PublishedDate = DateTime.UtcNow.AddDays(-2),
-            DurationMinutes = "45:10",
-            ViewCount = 125000,
-            IsFeaturedDailyVideo = false,
-            ChannelName = "Keshav Singh Official",
-            ChannelUrl = "https://www.youtube.com/@KeshavSingh"
-        },
-        new()
-        {
-            Id = "vid-4",
-            Title = "काशी विश्वनाथ मंदिर एवं देव दीपावली महाआरती दर्शन | Kashi Darshan",
-            Description = "Ganga Aarti and sacred Varanasi temple highlights.",
-            YouTubeUrl = "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-            YouTubeVideoId = "jNQXAC9IVRw",
-            EmbedUrl = "https://www.youtube.com/embed/jNQXAC9IVRw",
-            ThumbnailUrl = "https://img.youtube.com/vi/jNQXAC9IVRw/mqdefault.jpg",
-            Category = "Temple Darshan",
-            PublishedDate = DateTime.UtcNow.AddDays(-3),
-            DurationMinutes = "22:15",
-            ViewCount = 89200,
-            IsFeaturedDailyVideo = false,
-            ChannelName = "Keshav Singh Official",
-            ChannelUrl = "https://www.youtube.com/@KeshavSingh"
-        }
-    ];
+    public static List<SpiritualVideo> DefaultVideos() => [];
 
     public static PanchangSiteConfig DefaultSiteConfig() => new()
     {
@@ -193,8 +123,8 @@ public static class PanchangSeedData
         SiteNameHindi = "पंचांगम् & संस्कृति",
         SiteSubtitle = "Vedic Panchang & Aaj Ka Itihaas",
         DefaultCityName = "New Delhi, India",
-        BroadcastChannelName = "Keshav Singh Official",
-        BroadcastChannelUrl = "https://www.youtube.com/@KeshavSingh",
-        DailyBroadcastBanner = "Watch Daily Rashifal, Ekadashi Katha & Cultural Documentaries on our YouTube Channel."
+        BroadcastChannelName = string.Empty,
+        BroadcastChannelUrl = string.Empty,
+        DailyBroadcastBanner = "Daily Panchang briefs, Vrat Katha, Mantra meditations & cultural documentaries synced from connected creator channels."
     };
 }

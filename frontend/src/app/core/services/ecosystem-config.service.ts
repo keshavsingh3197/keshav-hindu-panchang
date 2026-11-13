@@ -1,83 +1,102 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, of, shareReplay, tap } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AppConfigEnvelope, EcosystemWebsite } from '../models/panchang.models';
+import { CentralChannelItem } from '../models/ecosystem.models';
 
-const FALLBACK_WEBSITES: EcosystemWebsite[] = [
-  { key: 'studio', name: 'Studio AI', url: 'https://studio.keshavsingh.in', icon: '🎬', sortOrder: 10, showInEcosystemBar: true },
-  { key: 'social', name: 'Social Analytics', url: 'https://social.keshavsingh.in', icon: '📊', sortOrder: 20, showInEcosystemBar: true },
-  { key: 'panchang', name: 'Hindu Panchang', url: 'https://panchang.keshavsingh.in', icon: '🕉️', sortOrder: 30, showInEcosystemBar: true },
-  { key: 'ghar-ledger', name: 'Ghar Ledger', url: 'https://ghar.keshavsingh.in', icon: '💰', sortOrder: 40, showInEcosystemBar: true },
-  { key: 'pratiyogita', name: 'Pratiyogita', url: 'https://pratiyogita.keshavsingh.in', icon: '🏆', sortOrder: 50, showInEcosystemBar: true },
-  { key: 'blog', name: 'Content Blog', url: 'https://git.keshavsingh.in', icon: '✍️', sortOrder: 60, showInEcosystemBar: true },
-  { key: 'admin', name: 'Admin & SSO', url: 'https://admin.keshavsingh.in', icon: '🛡️', sortOrder: 90, showInEcosystemBar: true }
-];
+interface ExtendedConfigEnvelope extends AppConfigEnvelope {
+  siteTitle?: string;
+  channels?: CentralChannelItem[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class EcosystemConfigService {
   private http = inject(HttpClient);
-  private loadOnce$?: ReturnType<HttpClient['get']>;
+  private loaded = false;
 
-  readonly websites = signal<EcosystemWebsite[]>(FALLBACK_WEBSITES);
+  readonly siteTitle = signal<string>('');
   readonly values = signal<Record<string, string>>({});
+  readonly websites = signal<EcosystemWebsite[]>([]);
+  readonly channels = signal<CentralChannelItem[]>([]);
 
   readonly ecosystemBarSites = computed(() =>
     this.websites()
-      .filter(w => w.showInEcosystemBar !== false)
+      .filter(w => w.showInEcosystemBar)
       .sort((a, b) => a.sortOrder - b.sortOrder)
   );
 
   readonly footerSites = computed(() =>
     this.websites()
-      .filter(w => ['studio', 'social', 'admin', 'blog', 'portfolio'].includes(w.key))
+      .filter(w => ['studio', 'social', 'panchang', 'admin', 'blog', 'pratiyogita'].includes(w.key))
       .sort((a, b) => a.sortOrder - b.sortOrder)
   );
 
+  readonly enabledChannels = computed(() =>
+    this.channels()
+      .filter(c => c.isEnabled !== false)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  );
+
+  readonly panchangChannels = computed(() => {
+    const flagged = this.enabledChannels().filter(c => c.showInPanchang);
+    if (flagged.length > 0) return flagged;
+    return this.enabledChannels().filter(c => (c.platform || '').toLowerCase() === 'youtube');
+  });
+
+  readonly footerChannels = computed(() =>
+    this.enabledChannels().filter(c => c.showInFooter)
+  );
+
   readonly creatorName = computed(() =>
-    this.values()['ecosystem.creatorName'] || 'Keshav Singh'
+    this.values()['ecosystem.creatorName'] || this.siteTitle() || 'Panchang Network'
   );
 
   readonly copyrightNotice = computed(() =>
-    this.values()['ecosystem.copyrightNotice'] ||
-    '© 2026 Keshav Singh. Part of the keshavsingh.in ecosystem. All rights reserved.'
+    this.values()['ecosystem.copyrightNotice'] || ''
   );
 
   readonly youtubeChannelName = computed(() =>
-    this.values()['ecosystem.youtubeChannelName'] || 'Keshav Singh Official'
+    this.panchangChannels()[0]?.name || this.values()['ecosystem.youtubeChannelName'] || ''
   );
 
   readonly youtubeChannelUrl = computed(() =>
-    this.values()['ecosystem.youtubeChannelUrl'] || 'https://www.youtube.com/@KeshavSingh'
-  );
-
-  readonly dailyBroadcastNote = computed(() =>
-    this.values()['panchang.dailyBroadcastNote'] || ''
+    this.panchangChannels()[0]?.url || this.values()['ecosystem.youtubeChannelUrl'] || ''
   );
 
   readonly adminPortalUrl = computed(() =>
-    this.websites().find(w => w.key === 'admin')?.url || 'https://admin.keshavsingh.in'
+    this.values()['ecosystem.adminUrl'] ||
+    this.websites().find(w => w.key === 'admin')?.url ||
+    environment.loginUrl.replace(/\/login\/?$/, '')
   );
 
   readonly studioPortalUrl = computed(() =>
-    this.websites().find(w => w.key === 'studio')?.url || 'https://studio.keshavsingh.in'
+    this.websites().find(w => w.key === 'studio')?.url || ''
+  );
+
+  readonly socialPortalUrl = computed(() =>
+    this.websites().find(w => w.key === 'social')?.url || ''
   );
 
   load(): void {
-    if (!this.loadOnce$) {
-      this.loadOnce$ = this.http.get<AppConfigEnvelope>(`${environment.idpUrl}/config`).pipe(
-        tap(env => {
-          if (env.websites?.length) {
-            this.websites.set([...env.websites].sort((a, b) => a.sortOrder - b.sortOrder));
-          }
-          if (env.values) {
-            this.values.set(env.values);
-          }
-        }),
-        catchError(() => of(null)),
-        shareReplay(1)
-      );
-      this.loadOnce$.subscribe();
-    }
+    if (this.loaded) return;
+    this.loaded = true;
+    this.fetchConfig();
+  }
+
+  refresh(): void {
+    this.fetchConfig();
+  }
+
+  private fetchConfig(): void {
+    this.http.get<ExtendedConfigEnvelope>(`${environment.idpUrl}/config`).pipe(
+      catchError(() => of(null))
+    ).subscribe(res => {
+      if (!res) return;
+      if (res.siteTitle) this.siteTitle.set(res.siteTitle);
+      if (res.values) this.values.set(res.values);
+      if (res.websites?.length) this.websites.set(res.websites);
+      if (res.channels) this.channels.set(res.channels);
+    });
   }
 }

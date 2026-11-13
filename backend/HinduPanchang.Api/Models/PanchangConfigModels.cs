@@ -49,9 +49,9 @@ public class PanchangSiteConfig
     public string SiteNameHindi { get; set; } = "पंचांगम् & संस्कृति";
     public string SiteSubtitle { get; set; } = "Vedic Panchang & Aaj Ka Itihaas";
     public string DefaultCityName { get; set; } = "New Delhi, India";
-    public string BroadcastChannelName { get; set; } = "Keshav Singh Official";
-    public string BroadcastChannelUrl { get; set; } = "https://www.youtube.com/@KeshavSingh";
-    public string DailyBroadcastBanner { get; set; } = "Watch Daily Rashifal, Ekadashi Katha & Cultural Documentaries on our YouTube Channel.";
+    public string BroadcastChannelName { get; set; } = string.Empty;
+    public string BroadcastChannelUrl { get; set; } = string.Empty;
+    public string DailyBroadcastBanner { get; set; } = "Daily Panchang briefings, Vrat Katha, Mantra meditations & cultural documentaries synced from connected creator channels.";
     public List<string> VideoCategories { get; set; } =
     [
         "Daily News & Rashifal",
@@ -60,4 +60,95 @@ public class PanchangSiteConfig
         "Temple Darshan"
     ];
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class PanchangIntegrationSecrets
+{
+    public string Id { get; set; } = "default";
+    public string YouTubeApiKey { get; set; } = string.Empty;
+    public string CentralConfigUrl { get; set; } = "https://id.keshavsingh.in/api/config";
+    public bool AutoSyncOnStartup { get; set; } = true;
+    public DateTime? LastEcosystemSyncUtc { get; set; }
+    public DateTime? LastVideoSyncUtc { get; set; }
+}
+
+public class PanchangIntegrationSettingsView
+{
+    public bool HasYouTubeApiKey { get; set; }
+    public string MaskedYouTubeApiKey { get; set; } = string.Empty;
+    public string CentralConfigUrl { get; set; } = "https://id.keshavsingh.in/api/config";
+    public bool AutoSyncOnStartup { get; set; } = true;
+    public DateTime? LastEcosystemSyncUtc { get; set; }
+    public DateTime? LastVideoSyncUtc { get; set; }
+}
+
+public class UpdatePanchangIntegrationsRequest
+{
+    public string? YouTubeApiKey { get; set; }
+    public bool ClearYouTubeApiKey { get; set; }
+    public string? CentralConfigUrl { get; set; }
+    public bool? AutoSyncOnStartup { get; set; }
+}
+
+public class CentralConfigEnvelope
+{
+    public string? SiteTitle { get; set; }
+    public Dictionary<string, string>? Values { get; set; }
+    public List<CentralWebsiteConfig>? Websites { get; set; }
+    public List<CentralChannelConfig>? Channels { get; set; }
+}
+
+public class CentralWebsiteConfig
+{
+    public string Key { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string ShortLabel { get; set; } = string.Empty;
+    public string Tagline { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public bool ShowInEcosystemBar { get; set; }
+}
+
+public class CentralChannelConfig
+{
+    public string Id { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Handle { get; set; } = string.Empty;
+    public string Platform { get; set; } = string.Empty;
+    public string ChannelId { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string Niche { get; set; } = string.Empty;
+    public string Tagline { get; set; } = string.Empty;
+    public bool ShowInAnalytics { get; set; }
+    public bool ShowInPanchang { get; set; }
+    public bool ShowInStudio { get; set; }
+    public bool ShowInFooter { get; set; }
+    public bool IsPrimary { get; set; }
+    public bool IsEnabled { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class PanchangSyncSummary
+{
+    public int ChannelsSynced { get; set; }
+    public int VideosSynced { get; set; }
+    public int LegacyVideosPurged { get; set; }
+    public int KitsUpdated { get; set; }
+    public bool SiteConfigUpdated { get; set; }
+    public List<string> Warnings { get; set; } = [];
+    public DateTime SyncedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public class PanchangExportBundle
+{
+    public DateTime ExportedAtUtc { get; set; } = DateTime.UtcNow;
+    public PanchangSiteConfig SiteConfig { get; set; } = new();
+    public List<SpiritualVideo> Videos { get; set; } = [];
+    public List<FestivalItem> Festivals { get; set; } = [];
+    public List<DevotionalKitItem> Kits { get; set; } = [];
+    public List<HistoricalIncident> Incidents { get; set; } = [];
+    public List<DailyKatha> Kathas { get; set; } = [];
+    public List<DailySutra> Sutras { get; set; } = [];
 }

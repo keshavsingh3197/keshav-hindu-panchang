@@ -14,6 +14,8 @@ public class SpiritualVideo
     public string DurationMinutes { get; set; } = "12:45";
     public long ViewCount { get; set; }
     public bool IsFeaturedDailyVideo { get; set; }
-    public string ChannelName { get; set; } = "Keshav Singh Official";
-    public string ChannelUrl { get; set; } = "https://youtube.com/@KeshavSingh";
+    public string ChannelName { get; set; } = string.Empty;
+    public string ChannelUrl { get; set; } = string.Empty;
+    public string SourceChannelHandle { get; set; } = string.Empty;
+    public bool IsAutoSynced { get; set; }
 }

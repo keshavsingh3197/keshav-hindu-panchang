@@ -380,6 +380,12 @@ import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/pa
       border: 1px solid #fed7aa;
       border-radius: 12px;
       padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(124, 45, 18, 0.04);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover {
+      box-shadow: 0 8px 20px rgba(124, 45, 18, 0.08);
+      transform: translateY(-1px);
     }
     .card h3 {
       margin: 0 0 1rem;

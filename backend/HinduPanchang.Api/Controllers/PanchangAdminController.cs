@@ -13,15 +13,21 @@ public class PanchangAdminController : ControllerBase
     private readonly VedicPanchangCalculator _calculator;
     private readonly CulturalContentService _culturalService;
     private readonly VideoCurationService _videoService;
+    private readonly CentralEcosystemSyncService _syncService;
+    private readonly IntegrationConfigService _integrationConfig;
 
     public PanchangAdminController(
         VedicPanchangCalculator calculator,
         CulturalContentService culturalService,
-        VideoCurationService videoService)
+        VideoCurationService videoService,
+        CentralEcosystemSyncService syncService,
+        IntegrationConfigService integrationConfig)
     {
         _calculator = calculator;
         _culturalService = culturalService;
         _videoService = videoService;
+        _syncService = syncService;
+        _integrationConfig = integrationConfig;
     }
 
     [HttpGet("status")]
@@ -212,4 +218,72 @@ public class PanchangAdminController : ControllerBase
     [HttpPut("site-config")]
     public async Task<ActionResult<PanchangSiteConfig>> SaveSiteConfig([FromBody] PanchangSiteConfig config) =>
         Ok(await _culturalService.SaveSiteConfigAsync(config));
+
+    // ---- Central Ecosystem Sync, Live YouTube Feeds & Masked Integrations ----
+
+    [HttpPost("sync/ecosystem")]
+    public async Task<ActionResult<PanchangSyncSummary>> SyncEcosystem(CancellationToken ct) =>
+        Ok(await _syncService.SyncAllAsync(syncVideos: true, ct));
+
+    [HttpPost("sync/videos")]
+    public async Task<ActionResult<PanchangSyncSummary>> SyncVideos(CancellationToken ct) =>
+        Ok(await _syncService.SyncAllAsync(syncVideos: true, ct));
+
+    [HttpPost("purge-legacy-videos")]
+    public async Task<IActionResult> PurgeLegacyVideos()
+    {
+        var removed = await _videoService.PurgeLegacyDemoVideosAsync();
+        return Ok(new { removed });
+    }
+
+    [HttpGet("integrations")]
+    public async Task<ActionResult<PanchangIntegrationSettingsView>> GetIntegrations() =>
+        Ok(await _integrationConfig.GetMaskedViewAsync());
+
+    [HttpPut("integrations")]
+    public async Task<ActionResult<PanchangIntegrationSettingsView>> UpdateIntegrations([FromBody] UpdatePanchangIntegrationsRequest request) =>
+        Ok(await _integrationConfig.UpdateAsync(request));
+
+    [HttpGet("export")]
+    public async Task<ActionResult<PanchangExportBundle>> ExportAll()
+    {
+        var bundle = new PanchangExportBundle
+        {
+            ExportedAtUtc = DateTime.UtcNow,
+            SiteConfig = await _culturalService.GetSiteConfigAsync(),
+            Videos = await _videoService.GetVideosAsync(),
+            Festivals = await _culturalService.GetUpcomingFestivalsAsync(),
+            Kits = await _culturalService.GetDevotionalKitsAsync(includeInactive: true),
+            Incidents = await _culturalService.GetAllIncidentsAsync(),
+            Kathas = await _culturalService.GetAllKathasAsync(),
+            Sutras = await _calculator.GetSutrasAsync()
+        };
+        return Ok(bundle);
+    }
+
+    [HttpPost("import")]
+    public async Task<IActionResult> ImportBundle([FromBody] PanchangExportBundle bundle)
+    {
+        int imported = 0;
+        if (bundle.SiteConfig != null && !string.IsNullOrWhiteSpace(bundle.SiteConfig.SiteNameHindi))
+        {
+            await _culturalService.SaveSiteConfigAsync(bundle.SiteConfig);
+            imported++;
+        }
+        foreach (var v in bundle.Videos ?? [])
+        {
+            if (!VideoCurationService.IsLegacyDemoVideo(v))
+            {
+                await _videoService.AddOrUpdateVideoAsync(v);
+                imported++;
+            }
+        }
+        foreach (var f in bundle.Festivals ?? []) { await _culturalService.UpsertFestivalAsync(f); imported++; }
+        foreach (var k in bundle.Kits ?? []) { await _culturalService.UpsertDevotionalKitAsync(k); imported++; }
+        foreach (var i in bundle.Incidents ?? []) { await _culturalService.UpsertIncidentAsync(i); imported++; }
+        foreach (var kt in bundle.Kathas ?? []) { await _culturalService.UpsertKathaAsync(kt); imported++; }
+        foreach (var s in bundle.Sutras ?? []) { await _calculator.UpsertSutraAsync(s); imported++; }
+
+        return Ok(new { imported });
+    }
 }

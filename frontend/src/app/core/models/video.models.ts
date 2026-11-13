@@ -13,4 +13,6 @@ export interface SpiritualVideo {
   isFeaturedDailyVideo: boolean;
   channelName: string;
   channelUrl: string;
+  sourceChannelHandle?: string;
+  isAutoSynced?: boolean;
 }

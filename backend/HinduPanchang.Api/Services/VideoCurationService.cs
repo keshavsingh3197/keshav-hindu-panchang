@@ -16,7 +16,8 @@ public partial class VideoCurationService
     public async Task<List<SpiritualVideo>> GetVideosAsync(string? category = null)
     {
         var list = await _store.GetListAsync(Collection, PanchangSeedData.DefaultVideos);
-        var ordered = list.OrderByDescending(v => v.IsFeaturedDailyVideo).ThenByDescending(v => v.PublishedDate);
+        var clean = list.Where(v => !IsLegacyDemoVideo(v));
+        var ordered = clean.OrderByDescending(v => v.IsFeaturedDailyVideo).ThenByDescending(v => v.PublishedDate);
         if (string.IsNullOrWhiteSpace(category) || category.Equals("All", StringComparison.OrdinalIgnoreCase))
             return ordered.ToList();
 
@@ -27,6 +28,76 @@ public partial class VideoCurationService
     {
         var videos = await GetVideosAsync();
         return videos.FirstOrDefault(v => v.IsFeaturedDailyVideo) ?? videos.FirstOrDefault();
+    }
+
+    public async Task<int> UpsertSyncedVideosAsync(IEnumerable<SpiritualVideo> syncedVideos)
+    {
+        var incoming = syncedVideos
+            .Where(v => !string.IsNullOrWhiteSpace(v.YouTubeVideoId) && !IsLegacyDemoVideo(v))
+            .ToList();
+        if (incoming.Count == 0) return 0;
+
+        var existing = (await _store.GetListAsync(Collection, PanchangSeedData.DefaultVideos))
+            .Where(v => !IsLegacyDemoVideo(v))
+            .ToList();
+
+        bool hasFeatured = existing.Any(v => v.IsFeaturedDailyVideo);
+        var byVideoId = existing
+            .Where(v => !string.IsNullOrWhiteSpace(v.YouTubeVideoId))
+            .GroupBy(v => v.YouTubeVideoId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        int count = 0;
+        var upsertList = new List<SpiritualVideo>();
+        foreach (var v in incoming)
+        {
+            if (byVideoId.TryGetValue(v.YouTubeVideoId, out var cur))
+            {
+                v.Id = cur.Id;
+                v.IsFeaturedDailyVideo = cur.IsFeaturedDailyVideo;
+                if (v.ViewCount == 0 && cur.ViewCount > 0) v.ViewCount = cur.ViewCount;
+                existing.Remove(cur);
+            }
+            existing.Add(v);
+            byVideoId[v.YouTubeVideoId] = v;
+            upsertList.Add(v);
+            count++;
+        }
+
+        if (!hasFeatured && upsertList.Count > 0)
+        {
+            var latest = upsertList.OrderByDescending(v => v.PublishedDate).First();
+            latest.IsFeaturedDailyVideo = true;
+        }
+
+        foreach (var v in upsertList)
+            await _store.UpsertItemAsync(Collection, v.Id, x => x.Id, v, PanchangSeedData.DefaultVideos);
+
+        return count;
+    }
+
+    public async Task<int> PurgeLegacyDemoVideosAsync()
+    {
+        var all = await _store.GetListAsync(Collection, PanchangSeedData.DefaultVideos);
+        var legacyItems = all.Where(IsLegacyDemoVideo).ToList();
+        int removed = 0;
+        foreach (var legacy in legacyItems)
+        {
+            if (await _store.DeleteItemAsync(Collection, legacy.Id, x => x.Id, PanchangSeedData.DefaultVideos))
+                removed++;
+        }
+        return removed;
+    }
+
+    public static bool IsLegacyDemoVideo(SpiritualVideo v)
+    {
+        if (string.Equals(v.YouTubeVideoId, "jNQXAC9IVRw", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (!string.IsNullOrWhiteSpace(v.ChannelUrl) && v.ChannelUrl.Contains("@KeshavSingh", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (string.Equals(v.ChannelName, "Keshav Singh Official", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return false;
     }
 
     public async Task<SpiritualVideo> AddOrUpdateVideoAsync(SpiritualVideo video)
