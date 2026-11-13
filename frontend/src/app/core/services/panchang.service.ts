@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, of } from 'rxjs';
+import { Observable, catchError, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   DailyKatha,
@@ -20,6 +20,7 @@ import { SpiritualVideo } from '../models/video.models';
 export class PanchangService {
   private http = inject(HttpClient);
   private api = environment.apiUrl;
+  readonly siteConfig = signal<PanchangSiteConfig | null>(null);
 
   getDailyPanchang(date?: string, location: string = 'New Delhi, India'): Observable<PanchangData> {
     const query = date
@@ -40,15 +41,20 @@ export class PanchangService {
 
   getSiteConfig(): Observable<PanchangSiteConfig> {
     return this.http.get<PanchangSiteConfig>(`${this.api}/panchang/config`).pipe(
-      catchError(() => of({
-        siteNameHindi: 'पंचांगम् & संस्कृति',
-        siteSubtitle: 'Vedic Panchang & Aaj Ka Itihaas',
-        defaultCityName: 'New Delhi, India',
-        broadcastChannelName: '',
-        broadcastChannelUrl: '',
-        dailyBroadcastBanner: 'Daily Panchang briefs, Vrat Katha, Mantra meditations & cultural documentaries synced from connected creator channels.',
-        videoCategories: ['Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan']
-      }))
+      tap((cfg) => this.siteConfig.set(cfg)),
+      catchError(() => {
+        const fallback: PanchangSiteConfig = {
+          siteNameHindi: 'पंचांगम् & संस्कृति',
+          siteSubtitle: 'Vedic Panchang & Aaj Ka Itihaas',
+          defaultCityName: 'New Delhi, India',
+          broadcastChannelName: '',
+          broadcastChannelUrl: '',
+          dailyBroadcastBanner: 'Daily Panchang briefs, Vrat Katha, Mantra meditations & cultural documentaries synced from connected creator channels.',
+          videoCategories: ['Daily News & Rashifal', 'Pauranik Katha', 'Mantra & Meditation', 'Temple Darshan']
+        };
+        this.siteConfig.set(fallback);
+        return of(fallback);
+      })
     );
   }
 

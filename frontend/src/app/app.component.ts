@@ -2,19 +2,22 @@ import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { EcosystemBarComponent } from './features/shared/ecosystem-bar/ecosystem-bar.component';
 import { HeaderComponent } from './features/shared/header/header.component';
+import { AdSlotComponent } from './features/shared/ad-slot/ad-slot.component';
 import { AuthService } from './core/services/auth.service';
 import { EcosystemConfigService } from './core/services/ecosystem-config.service';
+import { PanchangService } from './core/services/panchang.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, EcosystemBarComponent, HeaderComponent],
+  imports: [RouterOutlet, EcosystemBarComponent, HeaderComponent, AdSlotComponent],
   template: `
     <app-ecosystem-bar />
     <app-header />
     <main class="main-content">
       <router-outlet />
     </main>
+    <app-ad-slot placement="footer" />
     <footer class="app-footer">
       <div class="footer-container">
         <div class="footer-col">
@@ -94,6 +97,7 @@ import { EcosystemConfigService } from './core/services/ecosystem-config.service
 })
 export class AppComponent implements OnInit {
   private auth = inject(AuthService);
+  private panchangService = inject(PanchangService);
   private ecosystem = inject(EcosystemConfigService);
 
   readonly footerSites = this.ecosystem.footerSites;
@@ -103,5 +107,6 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     this.ecosystem.load();
     this.auth.ensureInitialized().subscribe();
+    this.panchangService.getSiteConfig().subscribe();
   }
 }

@@ -59,7 +59,25 @@ public class PanchangSiteConfig
         "Mantra & Meditation",
         "Temple Darshan"
     ];
+    public AdMonetizationConfig Ads { get; set; } = new();
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class AdMonetizationConfig
+{
+    public bool AdsEnabled { get; set; }
+    public string AdSenseClientId { get; set; } = string.Empty;
+    public string HeaderAdSlotId { get; set; } = string.Empty;
+    public string InFeedAdSlotId { get; set; } = string.Empty;
+    public string SidebarAdSlotId { get; set; } = string.Empty;
+    public string FooterAdSlotId { get; set; } = string.Empty;
+    public string AdLabel { get; set; } = "Advertisement";
+    public bool SponsorBannerEnabled { get; set; }
+    public string SponsorBadge { get; set; } = "Featured";
+    public string SponsorTitle { get; set; } = string.Empty;
+    public string SponsorDescription { get; set; } = string.Empty;
+    public string SponsorCtaText { get; set; } = "Learn More";
+    public string SponsorUrl { get; set; } = string.Empty;
 }
 
 public class PanchangIntegrationSecrets
