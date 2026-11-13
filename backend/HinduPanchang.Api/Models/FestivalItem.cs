@@ -12,4 +12,6 @@ public class FestivalItem
     public string RitualsAndPujaVidhi { get; set; } = string.Empty;
     public string FastingRules { get; set; } = string.Empty;
     public bool IsMajorFestival { get; set; }
+    public string Category { get; set; } = "Major"; // Major, Ekadashi, Pradosh, Purnima, Amavasya, Sankranti
+    public bool IsDynamicCalculated { get; set; }
 }

@@ -27,6 +27,15 @@ import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.mode
             <button type="button" class="f-pill" [class.active]="filterMode() === 'major'" (click)="filterMode.set('major')">
               ⭐ प्रमुख त्यौहार (Major)
             </button>
+            <button type="button" class="f-pill" [class.active]="filterMode() === 'ekadashi'" (click)="filterMode.set('ekadashi')">
+              🪷 एकादशी (Ekadashi)
+            </button>
+            <button type="button" class="f-pill" [class.active]="filterMode() === 'pradosh'" (click)="filterMode.set('pradosh')">
+              🕉️ प्रदोष (Pradosh)
+            </button>
+            <button type="button" class="f-pill" [class.active]="filterMode() === 'lunar'" (click)="filterMode.set('lunar')">
+              🌕 पूर्णिमा / अमावस्या
+            </button>
           </div>
           <input
             type="search"
@@ -295,13 +304,20 @@ export class FestivalsComponent implements OnInit {
 
   readonly festivals = signal<FestivalItem[]>([]);
   readonly kits = signal<DevotionalKitItem[]>([]);
-  readonly filterMode = signal<'all' | 'major'>('all');
+  readonly filterMode = signal<'all' | 'major' | 'ekadashi' | 'pradosh' | 'lunar'>('all');
   readonly searchTerm = signal<string>('');
 
   readonly filteredFestivals = computed(() => {
     const q = this.searchTerm().trim().toLowerCase();
+    const mode = this.filterMode();
     return this.festivals().filter(f => {
-      if (this.filterMode() === 'major' && !f.isMajorFestival) return false;
+      const cat = (f.category || '').toLowerCase();
+      if (mode === 'major' && !f.isMajorFestival) return false;
+      if (mode === 'ekadashi' && cat !== 'ekadashi' && !(f.nameEnglish || '').toLowerCase().includes('ekadashi')) return false;
+      if (mode === 'pradosh' && cat !== 'pradosh' && !(f.nameEnglish || '').toLowerCase().includes('pradosh')) return false;
+      if (mode === 'lunar' && cat !== 'purnima' && cat !== 'amavasya'
+        && !(f.nameEnglish || '').toLowerCase().includes('purnima')
+        && !(f.nameEnglish || '').toLowerCase().includes('amavasya')) return false;
       if (!q) return true;
       return (
         (f.nameHindi || '').toLowerCase().includes(q) ||
