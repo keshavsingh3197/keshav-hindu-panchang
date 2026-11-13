@@ -10,6 +10,7 @@ import {
   PanchangSyncSummary
 } from '../../core/models/ecosystem.models';
 import {
+  AdMonetizationConfig,
   DailyKatha,
   DailySutra,
   DevotionalKitItem,
@@ -451,7 +452,45 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
               <div class="field field-wide"><label>Daily Broadcast Banner</label><textarea rows="2" [(ngModel)]="siteForm.dailyBroadcastBanner"></textarea></div>
             </div>
             <div class="btn-row">
-              <button (click)="saveSiteConfig()" class="btn-primary">💾 Save Panchang Config</button>
+              <button (click)="saveSiteConfig()" class="btn-primary">💾 Save Panchang &amp; Ad Config</button>
+            </div>
+
+            <hr class="divider" />
+            <h2>💰 Google AdSense &amp; Sponsor Monetization</h2>
+            <p class="muted">
+              Configure runtime AdSense Publisher ID (<code>ca-pub-...</code>) and slot IDs or a devotional kit/sponsor banner.
+              Unconfigured slots stay completely hidden.
+            </p>
+            <div class="form-grid">
+              <div class="field field-wide">
+                <label class="chk">
+                  <input type="checkbox" [(ngModel)]="adsForm.adsEnabled" />
+                  <span>Enable Google AdSense Slots Across Panchang Hub</span>
+                </label>
+              </div>
+              <div class="field">
+                <label>AdSense Client ID (ca-pub-...)</label>
+                <input [(ngModel)]="adsForm.adSenseClientId" placeholder="ca-pub-0000000000000000" />
+              </div>
+              <div class="field"><label>Ad Label</label><input [(ngModel)]="adsForm.adLabel" placeholder="Advertisement" /></div>
+              <div class="field"><label>Header Ad Slot ID</label><input [(ngModel)]="adsForm.headerAdSlotId" placeholder="10-digit slot ID" /></div>
+              <div class="field"><label>In-Feed Ad Slot ID</label><input [(ngModel)]="adsForm.inFeedAdSlotId" placeholder="10-digit slot ID" /></div>
+              <div class="field"><label>Footer Ad Slot ID</label><input [(ngModel)]="adsForm.footerAdSlotId" placeholder="10-digit slot ID" /></div>
+
+              <div class="field field-wide">
+                <label class="chk">
+                  <input type="checkbox" [(ngModel)]="adsForm.sponsorBannerEnabled" />
+                  <span>Enable Fallback Sponsor Banner</span>
+                </label>
+              </div>
+              <div class="field"><label>Sponsor Badge</label><input [(ngModel)]="adsForm.sponsorBadge" placeholder="Featured" /></div>
+              <div class="field"><label>Sponsor Title</label><input [(ngModel)]="adsForm.sponsorTitle" placeholder="Vedic Calendar App / Kit" /></div>
+              <div class="field field-wide"><label>Sponsor Description</label><input [(ngModel)]="adsForm.sponsorDescription" placeholder="Short promo copy..." /></div>
+              <div class="field"><label>Sponsor CTA Text</label><input [(ngModel)]="adsForm.sponsorCtaText" placeholder="Learn More" /></div>
+              <div class="field"><label>Sponsor URL (https://)</label><input [(ngModel)]="adsForm.sponsorUrl" placeholder="https://..." /></div>
+            </div>
+            <div class="btn-row">
+              <button (click)="saveSiteConfig()" class="btn-primary">💾 Save AdSense &amp; Sponsor Config</button>
             </div>
 
             <hr class="divider" />
@@ -558,6 +597,7 @@ export class PanchangAdminComponent implements OnInit {
   sutraForm: DailySutra = this.emptySutra();
   overrideForm: PanchangOverride = { dateKey: toLocalDateKey() };
   cityForm: PanchangCity = this.emptyCity();
+  adsForm: AdMonetizationConfig = this.emptyAds();
   siteForm: PanchangSiteConfig = {
     siteNameHindi: 'पंचांगम् & संस्कृति',
     siteSubtitle: 'Vedic Panchang & Aaj Ka Itihaas',
@@ -590,7 +630,8 @@ export class PanchangAdminComponent implements OnInit {
     this.panchangService.getAdminOverrides().subscribe(o => this.overrides.set(o));
     this.panchangService.getAdminCities().subscribe(c => this.cities.set(c));
     this.panchangService.getSiteConfig().subscribe(cfg => {
-      this.siteForm = cfg;
+      this.siteForm = { ...cfg };
+      this.adsForm = { ...this.emptyAds(), ...(cfg.ads || {}) };
       this.categoriesCsv = (cfg.videoCategories || []).join(', ');
     });
     this.syncService.getIntegrations().subscribe({
@@ -819,15 +860,35 @@ export class PanchangAdminComponent implements OnInit {
   saveSiteConfig(): void {
     const payload: PanchangSiteConfig = {
       ...this.siteForm,
+      ads: { ...this.adsForm },
       videoCategories: this.categoriesCsv.split(',').map(c => c.trim()).filter(Boolean)
     };
     this.panchangService.saveSiteConfig(payload).subscribe({
       next: saved => {
-        this.siteForm = saved;
-        this.notify('Panchang site configuration saved.');
+        this.siteForm = { ...saved };
+        this.adsForm = { ...this.emptyAds(), ...(saved.ads || {}) };
+        this.notify('Panchang site & monetization configuration saved.');
       },
       error: err => this.notifyError('Failed to save site config', err)
     });
+  }
+
+  private emptyAds(): AdMonetizationConfig {
+    return {
+      adsEnabled: false,
+      adSenseClientId: '',
+      headerAdSlotId: '',
+      inFeedAdSlotId: '',
+      sidebarAdSlotId: '',
+      footerAdSlotId: '',
+      adLabel: 'Advertisement',
+      sponsorBannerEnabled: false,
+      sponsorBadge: 'Featured',
+      sponsorTitle: '',
+      sponsorDescription: '',
+      sponsorCtaText: 'Learn More',
+      sponsorUrl: ''
+    };
   }
 
   private notify(message: string): void { this.feedback.set({ message, isError: false }); }

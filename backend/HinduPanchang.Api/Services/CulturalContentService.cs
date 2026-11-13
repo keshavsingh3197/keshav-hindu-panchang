@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using HinduPanchang.Api.Models;
 
 namespace HinduPanchang.Api.Services;
@@ -115,14 +116,58 @@ public class CulturalContentService
 
     // ---- Site Config ----
 
-    public Task<PanchangSiteConfig> GetSiteConfigAsync() =>
-        _store.GetSingletonAsync(SiteConfigCollection, "default", PanchangSeedData.DefaultSiteConfig);
+    public async Task<PanchangSiteConfig> GetSiteConfigAsync()
+    {
+        var cfg = await _store.GetSingletonAsync(SiteConfigCollection, "default", PanchangSeedData.DefaultSiteConfig);
+        cfg.Ads ??= new AdMonetizationConfig();
+        return cfg;
+    }
 
     public Task<PanchangSiteConfig> SaveSiteConfigAsync(PanchangSiteConfig config)
     {
         config.Id = "default";
         config.UpdatedAt = DateTime.UtcNow;
         config.VideoCategories ??= [];
+        config.Ads = SanitizeAdConfig(config.Ads);
         return _store.SaveSingletonAsync(SiteConfigCollection, "default", config);
+    }
+
+    private static AdMonetizationConfig SanitizeAdConfig(AdMonetizationConfig? input)
+    {
+        if (input is null) return new AdMonetizationConfig();
+
+        string clientId = (input.AdSenseClientId ?? string.Empty).Trim();
+        if (!Regex.IsMatch(clientId, @"^ca-pub-\d{10,20}$"))
+            clientId = string.Empty;
+
+        static string CleanSlot(string? raw)
+        {
+            var s = (raw ?? string.Empty).Trim();
+            return Regex.IsMatch(s, @"^\d{6,15}$") ? s : string.Empty;
+        }
+
+        string sponsorUrl = (input.SponsorUrl ?? string.Empty).Trim();
+        if (!Uri.TryCreate(sponsorUrl, UriKind.Absolute, out var parsed) ||
+            (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
+        {
+            sponsorUrl = string.Empty;
+        }
+
+        return new AdMonetizationConfig
+        {
+            AdsEnabled = input.AdsEnabled && !string.IsNullOrEmpty(clientId),
+            AdSenseClientId = clientId,
+            HeaderAdSlotId = CleanSlot(input.HeaderAdSlotId),
+            InFeedAdSlotId = CleanSlot(input.InFeedAdSlotId),
+            SidebarAdSlotId = CleanSlot(input.SidebarAdSlotId),
+            FooterAdSlotId = CleanSlot(input.FooterAdSlotId),
+            AdLabel = string.IsNullOrWhiteSpace(input.AdLabel) ? "Advertisement" : input.AdLabel.Trim(),
+            SponsorBannerEnabled = input.SponsorBannerEnabled && !string.IsNullOrEmpty(sponsorUrl),
+            SponsorBadge = string.IsNullOrWhiteSpace(input.SponsorBadge) ? "Featured" : input.SponsorBadge.Trim(),
+            SponsorTitle = (input.SponsorTitle ?? string.Empty).Trim(),
+            SponsorDescription = (input.SponsorDescription ?? string.Empty).Trim(),
+            SponsorCtaText = string.IsNullOrWhiteSpace(input.SponsorCtaText) ? "Learn More" : input.SponsorCtaText.Trim(),
+            SponsorUrl = sponsorUrl
+        };
     }
 }

@@ -113,6 +113,22 @@ export interface DevotionalKitItem {
   isActive: boolean;
 }
 
+export interface AdMonetizationConfig {
+  adsEnabled: boolean;
+  adSenseClientId: string;
+  headerAdSlotId: string;
+  inFeedAdSlotId: string;
+  sidebarAdSlotId: string;
+  footerAdSlotId: string;
+  adLabel: string;
+  sponsorBannerEnabled: boolean;
+  sponsorBadge: string;
+  sponsorTitle: string;
+  sponsorDescription: string;
+  sponsorCtaText: string;
+  sponsorUrl: string;
+}
+
 export interface PanchangSiteConfig {
   id?: string;
   siteNameHindi: string;
@@ -122,6 +138,7 @@ export interface PanchangSiteConfig {
   broadcastChannelUrl: string;
   dailyBroadcastBanner: string;
   videoCategories: string[];
+  ads?: AdMonetizationConfig;
   updatedAt?: string;
 }
 

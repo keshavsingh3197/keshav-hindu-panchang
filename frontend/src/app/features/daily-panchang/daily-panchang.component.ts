@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PanchangService } from '../../core/services/panchang.service';
 import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/panchang.models';
+import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
 
 @Component({
   selector: 'app-daily-panchang',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, AdSlotComponent],
   template: `
     <div class="panchang-page">
       @if (adminDenied()) {
@@ -36,6 +37,8 @@ import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/pa
           </select>
         </div>
       </section>
+
+      <app-ad-slot placement="header" />
 
       @if (panchang(); as p) {
         <!-- Hero Header Card -->
@@ -195,6 +198,8 @@ import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/pa
             <a routerLink="/videos" class="btn-video">दैनिक वीडियो देखें (Watch Daily Videos) →</a>
           </div>
         </section>
+
+        <app-ad-slot placement="infeed" />
       }
     </div>
   `,
