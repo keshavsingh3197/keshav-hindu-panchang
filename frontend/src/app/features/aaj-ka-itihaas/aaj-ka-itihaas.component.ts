@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PanchangService } from '../../core/services/panchang.service';
+import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/models/panchang.models';
 
 @Component({
@@ -23,6 +24,11 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
       <div class="date-strip">
         <label>तिथि का इतिहास देखें (Select Date):</label>
         <input type="date" [ngModel]="currentDate()" (ngModelChange)="currentDate.set($event); loadData()" class="f-date" />
+        @if (studioPortalUrl(); as studioUrl) {
+          <a [href]="studioUrl + '/automation?source=AajKaItihaas&date=' + currentDate()" target="_blank" rel="noopener" class="btn-studio-handoff">
+            ⚡ Auto-Post History Reel in Studio →
+          </a>
+        }
       </div>
 
       <!-- Daily Dharmik Katha Highlight -->
@@ -294,11 +300,24 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
       color: #7c2d12;
       border: 1px dashed #fed7aa;
     }
+    .btn-studio-handoff {
+      margin-left: auto;
+      background: #7c2d12;
+      color: #ffffff;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .btn-studio-handoff:hover { background: #431407; }
   `]
 })
 export class AajKaItihaasComponent implements OnInit {
   private panchangService = inject(PanchangService);
+  private ecosystem = inject(EcosystemConfigService);
 
+  readonly studioPortalUrl = this.ecosystem.studioPortalUrl;
   readonly currentDate = signal<string>(toLocalDateKey());
   readonly incidents = signal<HistoricalIncident[]>([]);
   readonly dailyKatha = signal<DailyKatha | null>(null);
@@ -321,6 +340,7 @@ export class AajKaItihaasComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.ecosystem.load();
     this.loadData();
   }
 

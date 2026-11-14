@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { PanchangService } from '../../core/services/panchang.service';
+import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.models';
 
 @Component({
@@ -44,6 +45,11 @@ import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.mode
             (ngModelChange)="searchTerm.set($event)"
             placeholder="खोजें (जैसे Ekadashi, Shivratri, Tithi)..."
             aria-label="Search festivals" />
+          @if (studioPortalUrl(); as studioUrl) {
+            <a [href]="studioUrl + '/automation?source=HinduFestival'" target="_blank" rel="noopener" class="btn-studio-handoff">
+              ⚡ Auto-Post Festival Reel in Studio →
+            </a>
+          }
         </div>
       </div>
 
@@ -297,11 +303,24 @@ import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.mode
       transition: background 0.2s;
     }
     .btn-buy:hover { background: #c2410c; }
+    .btn-studio-handoff {
+      background: #7c2d12;
+      color: #ffffff;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.84rem;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn-studio-handoff:hover { background: #431407; }
   `]
 })
 export class FestivalsComponent implements OnInit {
   private panchangService = inject(PanchangService);
+  private ecosystem = inject(EcosystemConfigService);
 
+  readonly studioPortalUrl = this.ecosystem.studioPortalUrl;
   readonly festivals = signal<FestivalItem[]>([]);
   readonly kits = signal<DevotionalKitItem[]>([]);
   readonly filterMode = signal<'all' | 'major' | 'ekadashi' | 'pradosh' | 'lunar'>('all');
@@ -329,6 +348,7 @@ export class FestivalsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.ecosystem.load();
     this.panchangService.getUpcomingFestivals().subscribe(f => this.festivals.set(f));
     this.panchangService.getDevotionalKits().subscribe(k => this.kits.set(k));
   }

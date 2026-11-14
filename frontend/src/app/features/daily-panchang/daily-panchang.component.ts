@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PanchangService } from '../../core/services/panchang.service';
+import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/panchang.models';
 import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
 
@@ -197,7 +198,14 @@ import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
             <span class="v-tag">🎥 दैनिक वीडियो प्रसारण</span>
             <h3>आज का दैनिक राशिफल और पंचांग विचार वीडियो देखें</h3>
             <p>आज के ग्रहों की स्थिति, 12 राशियों का फल, और दैनिक उपाय वीडियो में देखें। सीधे यूट्यूब पर जुड़ें।</p>
-            <a routerLink="/videos" class="btn-video">दैनिक वीडियो देखें (Watch Daily Videos) →</a>
+            <div class="v-cta-actions">
+              <a routerLink="/videos" class="btn-video">दैनिक वीडियो देखें (Watch Daily Videos) →</a>
+              @if (studioPortalUrl(); as studioUrl) {
+                <a [href]="studioUrl + '/automation?source=HinduPanchang&date=' + selectedDate()" target="_blank" rel="noopener" class="btn-video btn-video-studio">
+                  ⚡ Auto-Post / AI Video in Studio →
+                </a>
+              }
+            </div>
           </div>
         </section>
 
@@ -472,14 +480,19 @@ import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
       transition: background 0.2s;
     }
     .btn-video:hover { background: #fff7ed; }
+    .v-cta-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.9rem; }
+    .btn-video-studio { background: #431407; color: #fef08a; border: 1px solid rgba(254, 240, 138, 0.45); }
+    .btn-video-studio:hover { background: #7c2d12; color: #ffffff; }
     .alert-denied { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem 1rem; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
     .btn-close-alert { background: transparent; border: none; color: #991b1b; font-weight: 700; cursor: pointer; font-size: 1rem; }
   `]
 })
 export class DailyPanchangComponent implements OnInit {
   private panchangService = inject(PanchangService);
+  private ecosystem = inject(EcosystemConfigService);
   private route = inject(ActivatedRoute);
 
+  readonly studioPortalUrl = this.ecosystem.studioPortalUrl;
   readonly selectedDate = signal<string>(toLocalDateKey());
   readonly selectedLocation = signal<string>('New Delhi, India');
   readonly cities = signal<PanchangCity[]>([]);
@@ -487,6 +500,7 @@ export class DailyPanchangComponent implements OnInit {
   readonly adminDenied = signal(false);
 
   ngOnInit(): void {
+    this.ecosystem.load();
     this.route.queryParamMap.subscribe(params => {
       this.adminDenied.set(params.get('denied') === 'admin');
     });
