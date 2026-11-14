@@ -21,6 +21,30 @@ public class EcosystemWarmupService : BackgroundService
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+            await RunSyncPassAsync(stoppingToken);
+
+            // Keep Panchang videos & channel config fresh periodically so newly published YouTube
+            // videos appear automatically without manual Admin sync clicks.
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30));
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                await RunSyncPassAsync(stoppingToken);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal shutdown
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Non-fatal exception during Panchang startup ecosystem warmup.");
+        }
+    }
+
+    private async Task RunSyncPassAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
             using var scope = _services.CreateScope();
             var integrations = scope.ServiceProvider.GetRequiredService<IntegrationConfigService>();
             var videoService = scope.ServiceProvider.GetRequiredService<VideoCurationService>();
@@ -33,16 +57,16 @@ public class EcosystemWarmupService : BackgroundService
 
             var result = await syncService.SyncAllAsync(syncVideos: true, stoppingToken);
             _logger.LogInformation(
-                "Startup ecosystem warmup completed: {Channels} channels, {Videos} videos, {Purged} legacy purged.",
+                "Ecosystem warmup synced: {Channels} channels, {Videos} videos, {Purged} legacy purged.",
                 result.ChannelsSynced, result.VideosSynced, result.LegacyVideosPurged);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // Normal shutdown
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Non-fatal exception during Panchang startup ecosystem warmup.");
+            _logger.LogWarning(ex, "Non-fatal exception during periodic Panchang ecosystem sync pass.");
         }
     }
 }

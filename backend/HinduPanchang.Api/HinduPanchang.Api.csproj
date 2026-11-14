@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>hindu-panchang-local</UserSecretsId>
     <UseLocalProjectReferences Condition="'$(UseLocalProjectReferences)' == '' and Exists('..\..\..\shared-security\src\KeshavSingh.Security\KeshavSingh.Security.csproj')">true</UseLocalProjectReferences>
     <SkipPrivatePackages Condition="'$(UseLocalProjectReferences)' == 'true' or '$(PACKAGES_READ_TOKEN)' == ''">true</SkipPrivatePackages>
   </PropertyGroup>

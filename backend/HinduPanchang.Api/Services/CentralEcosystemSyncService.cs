@@ -70,9 +70,11 @@ public class CentralEcosystemSyncService
             return summary;
         }
 
-        // 3. Identify Panchang-relevant YouTube channels
+        // 3. Identify Panchang-relevant YouTube channels (excluding personal non-Panchang accounts)
         var allYtChannels = (envelope.Channels ?? [])
-            .Where(c => c.IsEnabled && string.Equals(c.Platform, "youtube", StringComparison.OrdinalIgnoreCase))
+            .Where(c => c.IsEnabled
+                && string.Equals(c.Platform, "youtube", StringComparison.OrdinalIgnoreCase)
+                && !VideoCurationService.IsExcludedPersonalChannelHandleOrName(c.Handle, c.Url, c.Name))
             .OrderBy(c => c.SortOrder)
             .ToList();
 

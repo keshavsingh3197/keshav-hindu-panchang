@@ -6,6 +6,8 @@ using HinduPanchang.Api.Models;
 using HinduPanchang.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -347,5 +349,161 @@ public class HinduPanchangTests
         {
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
+    }
+
+    [Fact]
+    public async Task VideoCurationService_DateFiltering_DefaultsToLatestAndExcludesPersonalChannel()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var store = CreateStore(root);
+            var svc = new VideoCurationService(store);
+            var todayKey = VideoCurationService.GetIstTodayDateKey();
+
+            await svc.AddOrUpdateVideoAsync(new SpiritualVideo
+            {
+                Id = "v-today",
+                Title = "Aaj Ka Panchang Video",
+                YouTubeVideoId = "dQw4w9WgXc1",
+                ChannelName = "Omkar Shiv Bhakti",
+                SourceChannelHandle = "@OmkarShivBhakti",
+                DateKey = todayKey,
+                PublishedDate = DateTime.UtcNow
+            });
+
+            await svc.AddOrUpdateVideoAsync(new SpiritualVideo
+            {
+                Id = "v-hist",
+                Title = "Aaj Ka Itihaas Historical Video",
+                YouTubeVideoId = "dQw4w9WgXc2",
+                Category = "Pauranik Katha",
+                ChannelName = "Omkar Shiv Bhakti",
+                SourceChannelHandle = "@OmkarShivBhakti",
+                DateKey = "2026-11-10",
+                PublishedDate = new DateTime(2026, 11, 10, 8, 0, 0, DateTimeKind.Utc)
+            });
+
+            await svc.AddOrUpdateVideoAsync(new SpiritualVideo
+            {
+                Id = "v-personal",
+                Title = "Personal Vlog",
+                YouTubeVideoId = "dQw4w9WgXc3",
+                ChannelName = "Keshav Singh World",
+                SourceChannelHandle = "@keshavsinghworld",
+                DateKey = todayKey,
+                PublishedDate = DateTime.UtcNow
+            });
+
+            var defaultFeed = await svc.GetVideoFeedAsync();
+            Assert.Equal(todayKey, defaultFeed.SelectedDate);
+            Assert.False(defaultFeed.ShowAllDates);
+            Assert.Equal(2, defaultFeed.TotalAllDatesCount);
+            Assert.Single(defaultFeed.Videos);
+            Assert.Equal("v-today", defaultFeed.Videos[0].Id);
+            Assert.DoesNotContain(defaultFeed.Videos, v => v.Id == "v-personal");
+
+            var dateFeed = await svc.GetVideoFeedAsync(date: "2026-11-10", allDates: false);
+            Assert.Equal("2026-11-10", dateFeed.SelectedDate);
+            Assert.Single(dateFeed.Videos);
+            Assert.Equal("v-hist", dateFeed.Videos[0].Id);
+
+            var allFeed = await svc.GetVideoFeedAsync(allDates: true);
+            Assert.True(allFeed.ShowAllDates);
+            Assert.Equal(2, allFeed.Videos.Count);
+            Assert.DoesNotContain(allFeed.Videos, v => v.Id == "v-personal");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public async Task VideoHubController_AutomationSync_RequiresKeyAndUpsertsByPostId()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var store = CreateStore(root);
+            var svc = new VideoCurationService(store);
+            var cfg = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["Ecosystem:SyncKey"] = "super-sync-secret" })
+                .Build();
+
+            var controller = new VideoHubController(svc, cfg)
+            {
+                ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            };
+
+            var req = new AutomationVideoSyncRequest
+            {
+                AutomationPostId = "post-abc-123",
+                Title = "Raja Harishchandra Katha",
+                Description = "Satya aur Dharm ki katha",
+                YouTubeVideoId = "abc123XYZ99",
+                SourceType = "DailyKatha",
+                DateKey = "2026-11-14",
+                ChannelName = "Omkar Shiv Bhakti",
+                SourceChannelHandle = "@OmkarShivBhakti",
+                Format = "Vertical"
+            };
+
+            // Fail closed when header missing
+            var unauth = await controller.SyncFromAutomation(req);
+            Assert.IsType<UnauthorizedObjectResult>(unauth.Result);
+
+            // Fail closed when key wrong
+            controller.HttpContext.Request.Headers["X-Ecosystem-Key"] = "wrong-key";
+            var wrong = await controller.SyncFromAutomation(req);
+            Assert.IsType<UnauthorizedObjectResult>(wrong.Result);
+
+            // Succeeds with matching X-Ecosystem-Key
+            controller.HttpContext.Request.Headers["X-Ecosystem-Key"] = "super-sync-secret";
+            var ok1 = await controller.SyncFromAutomation(req);
+            var okRes1 = Assert.IsType<OkObjectResult>(ok1.Result);
+            var saved1 = Assert.IsType<SpiritualVideo>(okRes1.Value);
+            Assert.Equal("2026-11-14", saved1.DateKey);
+            Assert.Equal("Short", saved1.DurationMinutes);
+            Assert.Equal("Pauranik Katha", saved1.Category);
+
+            // Repeated sync with updated title updates in place rather than duplicating
+            req.Title = "Raja Harishchandra Katha (Updated)";
+            var ok2 = await controller.SyncFromAutomation(req);
+            Assert.IsType<OkObjectResult>(ok2.Result);
+
+            var all = await svc.GetVideosAsync(allDates: true);
+            Assert.Single(all);
+            Assert.Equal("Raja Harishchandra Katha (Updated)", all[0].Title);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void HybridDataStore_ResolveMongoConnectionString_SupportsExpectedSecretKeys()
+    {
+        var cfg1 = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Mongo:ConnectionString"] = "mongodb://localhost:27017"
+        }).Build();
+        Assert.Equal("mongodb://localhost:27017", HybridDataStore.ResolveMongoConnectionString(cfg1));
+
+        var cfg2 = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Mongo:Uri"] = "mongodb://localhost:27018"
+        }).Build();
+        Assert.Equal("mongodb://localhost:27018", HybridDataStore.ResolveMongoConnectionString(cfg2));
+
+        var cfg3 = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MongoDbSettings:ConnectionString"] = "mongodb+srv://cluster.example/test"
+        }).Build();
+        Assert.Equal("mongodb+srv://cluster.example/test", HybridDataStore.ResolveMongoConnectionString(cfg3));
+
+        var emptyCfg = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        Assert.Null(HybridDataStore.ResolveMongoConnectionString(emptyCfg));
     }
 }
