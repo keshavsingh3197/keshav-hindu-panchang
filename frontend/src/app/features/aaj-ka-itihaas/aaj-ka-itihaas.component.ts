@@ -1,14 +1,16 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/models/panchang.models';
+import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
 @Component({
   selector: 'app-aaj-ka-itihaas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LoadingStateComponent],
   template: `
     <div class="itihaas-page">
       <div class="header-box">
@@ -32,6 +34,9 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
       </div>
 
       <!-- Daily Dharmik Katha Highlight -->
+      @if (loadingKatha() && !dailyKatha()) {
+        <app-loading-state variant="rows" [count]="1" label="आज की प्रेरक पौराणिक कथा लोड हो रही है…" />
+      }
       @if (dailyKatha(); as katha) {
         <section class="katha-hero-card">
           <div class="katha-badge">✨ आज की प्रेरक पौराणिक कथा (Story of the Day)</div>
@@ -74,7 +79,9 @@ import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/model
           }
         </div>
 
-        @if (filteredIncidents().length === 0) {
+        @if (loadingIncidents()) {
+          <app-loading-state variant="rows" [count]="4" label="आज का इतिहास लोड हो रहा है… / Loading historical events…" />
+        } @else if (filteredIncidents().length === 0) {
           <div class="empty-history">इस तिथि के लिए अभी कोई ऐतिहासिक प्रसंग दर्ज नहीं है।</div>
         } @else {
           <div class="timeline-list">
@@ -321,6 +328,8 @@ export class AajKaItihaasComponent implements OnInit {
   readonly currentDate = signal<string>(toLocalDateKey());
   readonly incidents = signal<HistoricalIncident[]>([]);
   readonly dailyKatha = signal<DailyKatha | null>(null);
+  readonly loadingIncidents = signal<boolean>(true);
+  readonly loadingKatha = signal<boolean>(true);
   readonly selectedCategory = signal<string>('All');
 
   readonly hasExactDateMatches = computed(() =>
@@ -346,7 +355,13 @@ export class AajKaItihaasComponent implements OnInit {
 
   loadData(): void {
     this.selectedCategory.set('All');
-    this.panchangService.getAajKaItihaas(this.currentDate()).subscribe(inc => this.incidents.set(inc));
-    this.panchangService.getDailyKatha(this.currentDate()).subscribe(k => this.dailyKatha.set(k));
+    this.loadingIncidents.set(true);
+    this.loadingKatha.set(true);
+    this.panchangService.getAajKaItihaas(this.currentDate())
+      .pipe(finalize(() => this.loadingIncidents.set(false)))
+      .subscribe(inc => this.incidents.set(inc));
+    this.panchangService.getDailyKatha(this.currentDate())
+      .pipe(finalize(() => this.loadingKatha.set(false)))
+      .subscribe(k => this.dailyKatha.set(k));
   }
 }

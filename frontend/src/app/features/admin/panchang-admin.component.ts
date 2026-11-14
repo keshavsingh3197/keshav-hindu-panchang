@@ -1,10 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { PanchangSyncService } from '../../core/services/panchang-sync.service';
+import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 import {
   PanchangIntegrationSettingsView,
   PanchangSyncSummary
@@ -29,7 +31,7 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
 @Component({
   selector: 'app-panchang-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LoadingStateComponent],
   template: `
     <div class="admin-page">
       @if (!auth.isAdmin()) {
@@ -66,6 +68,10 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
             <span>{{ fb.message }}</span>
             <button type="button" (click)="feedback.set(null)">✕</button>
           </div>
+        }
+
+        @if (loadingData()) {
+          <app-loading-state variant="rows" [count]="3" label="Loading Admin Console data & ecosystem channels…" />
         }
 
         <!-- Tab Navigation -->
@@ -611,6 +617,7 @@ export class PanchangAdminComponent implements OnInit {
   festivalForm: FestivalItem = this.emptyFestival();
   private syncService = inject(PanchangSyncService);
   readonly syncing = signal(false);
+  readonly loadingData = signal(false);
   readonly integrations = signal<PanchangIntegrationSettingsView | null>(null);
   readonly lastSync = signal<PanchangSyncSummary | null>(null);
   centralUrlInput = '';
@@ -643,24 +650,30 @@ export class PanchangAdminComponent implements OnInit {
   }
 
   private loadAll(): void {
-    this.panchangService.getAdminStatus().subscribe({
+    let pending = 11;
+    const done = () => {
+      pending -= 1;
+      if (pending <= 0) this.loadingData.set(false);
+    };
+    this.loadingData.set(true);
+    this.panchangService.getAdminStatus().pipe(finalize(done)).subscribe({
       next: s => this.status.set(s),
       error: err => this.notifyError('Failed to verify Admin API session', err)
     });
-    this.panchangService.getAdminVideos().subscribe(v => this.videos.set(v));
-    this.panchangService.getAdminFestivals().subscribe(f => this.festivals.set(f));
-    this.panchangService.getAdminKits().subscribe(k => this.kits.set(k));
-    this.panchangService.getAdminIncidents().subscribe(i => this.incidents.set(i));
-    this.panchangService.getAdminKathas().subscribe(k => this.kathas.set(k));
-    this.panchangService.getAdminSutras().subscribe(s => this.sutras.set(s));
-    this.panchangService.getAdminOverrides().subscribe(o => this.overrides.set(o));
-    this.panchangService.getAdminCities().subscribe(c => this.cities.set(c));
-    this.panchangService.getSiteConfig().subscribe(cfg => {
+    this.panchangService.getAdminVideos().pipe(finalize(done)).subscribe(v => this.videos.set(v));
+    this.panchangService.getAdminFestivals().pipe(finalize(done)).subscribe(f => this.festivals.set(f));
+    this.panchangService.getAdminKits().pipe(finalize(done)).subscribe(k => this.kits.set(k));
+    this.panchangService.getAdminIncidents().pipe(finalize(done)).subscribe(i => this.incidents.set(i));
+    this.panchangService.getAdminKathas().pipe(finalize(done)).subscribe(k => this.kathas.set(k));
+    this.panchangService.getAdminSutras().pipe(finalize(done)).subscribe(s => this.sutras.set(s));
+    this.panchangService.getAdminOverrides().pipe(finalize(done)).subscribe(o => this.overrides.set(o));
+    this.panchangService.getAdminCities().pipe(finalize(done)).subscribe(c => this.cities.set(c));
+    this.panchangService.getSiteConfig().pipe(finalize(done)).subscribe(cfg => {
       this.siteForm = { ...cfg };
       this.adsForm = { ...this.emptyAds(), ...(cfg.ads || {}) };
       this.categoriesCsv = (cfg.videoCategories || []).join(', ');
     });
-    this.syncService.getIntegrations().subscribe({
+    this.syncService.getIntegrations().pipe(finalize(done)).subscribe({
       next: iv => {
         this.integrations.set(iv);
         this.centralUrlInput = iv.centralConfigUrl || '';

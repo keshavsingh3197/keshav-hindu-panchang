@@ -2,15 +2,17 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/panchang.models';
 import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
+import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
 @Component({
   selector: 'app-daily-panchang',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AdSlotComponent],
+  imports: [CommonModule, FormsModule, RouterLink, AdSlotComponent, LoadingStateComponent],
   template: `
     <div class="panchang-page">
       @if (adminDenied()) {
@@ -40,6 +42,21 @@ import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
       </section>
 
       <app-ad-slot placement="header" />
+
+      @if (!panchang() && (loading() || error())) {
+        <app-loading-state
+          variant="panchang"
+          [error]="error()"
+          label="आज का वैदिक पंचांग लोड हो रहा है… / Loading Daily Panchang & Muhurat…"
+          (retry)="loadPanchang()" />
+      }
+
+      @if (panchang() && loading()) {
+        <div class="refreshing-pill" role="status" aria-live="polite">
+          <span class="mini-spin" aria-hidden="true"></span>
+          <span>अद्यतन हो रहा है… Refreshing Panchang for {{ selectedDate() }} ({{ selectedLocation() }})…</span>
+        </div>
+      }
 
       @if (panchang(); as p) {
         <!-- Hero Header Card -->
@@ -485,6 +502,28 @@ import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
     .btn-video-studio:hover { background: #7c2d12; color: #ffffff; }
     .alert-denied { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem 1rem; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
     .btn-close-alert { background: transparent; border: none; color: #991b1b; font-weight: 700; cursor: pointer; font-size: 1rem; }
+    .refreshing-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      align-self: flex-start;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      color: #9a3412;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+    .mini-spin {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(234, 88, 12, 0.25);
+      border-top-color: #ea580c;
+      animation: p-spin 0.75s linear infinite;
+    }
+    @keyframes p-spin { to { transform: rotate(360deg); } }
   `]
 })
 export class DailyPanchangComponent implements OnInit {
@@ -497,6 +536,8 @@ export class DailyPanchangComponent implements OnInit {
   readonly selectedLocation = signal<string>('New Delhi, India');
   readonly cities = signal<PanchangCity[]>([]);
   readonly panchang = signal<PanchangData | null>(null);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
   readonly adminDenied = signal(false);
 
   ngOnInit(): void {
@@ -514,8 +555,14 @@ export class DailyPanchangComponent implements OnInit {
   }
 
   loadPanchang(): void {
+    this.loading.set(true);
+    this.error.set(null);
     this.panchangService.getDailyPanchang(this.selectedDate(), this.selectedLocation())
-      .subscribe(data => this.panchang.set(data));
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: data => this.panchang.set(data),
+        error: () => this.error.set('Could not connect to Panchang API right now. Please try again in a moment.')
+      });
   }
 
   changeDay(days: number): void {

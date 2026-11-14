@@ -2,14 +2,16 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.models';
+import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
 @Component({
   selector: 'app-festivals',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingStateComponent],
   template: `
     <div class="festivals-page">
       <div class="header-box">
@@ -54,7 +56,9 @@ import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.mode
       </div>
 
       <!-- Festivals Grid -->
-      @if (filteredFestivals().length === 0) {
+      @if (loadingFestivals()) {
+        <app-loading-state variant="cards" [count]="6" label="आगामी व्रत एवं त्यौहार लोड हो रहे हैं… / Loading festivals & vrat dates…" />
+      } @else if (filteredFestivals().length === 0) {
         <div class="empty-box">कोई व्रत या त्यौहार इस फ़िल्टर से मेल नहीं खाता।</div>
       } @else {
         <section class="festivals-grid">
@@ -99,24 +103,28 @@ import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.mode
             <p>त्यौहारों एवं दैनिक पूजा के लिए आवश्यक सामग्री, मंत्र वीडियो एवं पावन संसाधन:</p>
           </div>
 
-          <div class="samagri-grid">
-            @for (kit of kits(); track kit.id) {
-              <div class="item-card">
-                <span class="item-icon">{{ kit.icon || '🪔' }}</span>
-                <h4>{{ kit.title }}</h4>
-                <p>{{ kit.description }}</p>
-                @if (isInternalRoute(kit.externalUrl)) {
-                  <a [routerLink]="kit.externalUrl" class="btn-buy">
-                    {{ kit.actionLabel || 'Explore →' }}
-                  </a>
-                } @else {
-                  <a [href]="kit.externalUrl" target="_blank" rel="noopener" class="btn-buy">
-                    {{ kit.actionLabel || 'Explore →' }}
-                  </a>
-                }
-              </div>
-            }
-          </div>
+          @defer (on viewport) {
+            <div class="samagri-grid">
+              @for (kit of kits(); track kit.id) {
+                <div class="item-card">
+                  <span class="item-icon">{{ kit.icon || '🪔' }}</span>
+                  <h4>{{ kit.title }}</h4>
+                  <p>{{ kit.description }}</p>
+                  @if (isInternalRoute(kit.externalUrl)) {
+                    <a [routerLink]="kit.externalUrl" class="btn-buy">
+                      {{ kit.actionLabel || 'Explore →' }}
+                    </a>
+                  } @else {
+                    <a [href]="kit.externalUrl" target="_blank" rel="noopener" class="btn-buy">
+                      {{ kit.actionLabel || 'Explore →' }}
+                    </a>
+                  }
+                </div>
+              }
+            </div>
+          } @placeholder {
+            <app-loading-state variant="cards" [count]="4" label="पूजा एवं उत्सव संग्रह लोड हो रहा है…" />
+          }
         </section>
       }
     </div>
@@ -323,6 +331,8 @@ export class FestivalsComponent implements OnInit {
   readonly studioPortalUrl = this.ecosystem.studioPortalUrl;
   readonly festivals = signal<FestivalItem[]>([]);
   readonly kits = signal<DevotionalKitItem[]>([]);
+  readonly loadingFestivals = signal<boolean>(true);
+  readonly loadingKits = signal<boolean>(true);
   readonly filterMode = signal<'all' | 'major' | 'ekadashi' | 'pradosh' | 'lunar'>('all');
   readonly searchTerm = signal<string>('');
 
@@ -349,8 +359,14 @@ export class FestivalsComponent implements OnInit {
 
   ngOnInit(): void {
     this.ecosystem.load();
-    this.panchangService.getUpcomingFestivals().subscribe(f => this.festivals.set(f));
-    this.panchangService.getDevotionalKits().subscribe(k => this.kits.set(k));
+    this.loadingFestivals.set(true);
+    this.panchangService.getUpcomingFestivals()
+      .pipe(finalize(() => this.loadingFestivals.set(false)))
+      .subscribe(f => this.festivals.set(f));
+    this.loadingKits.set(true);
+    this.panchangService.getDevotionalKits()
+      .pipe(finalize(() => this.loadingKits.set(false)))
+      .subscribe(k => this.kits.set(k));
   }
 
   isInternalRoute(url: string): boolean {
