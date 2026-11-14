@@ -63,8 +63,14 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
             <div class="meta-top">
               <div class="badges-row">
                 <span class="category-badge">{{ featured.category }}</span>
+                @if (featured.format === 'Short') {
+                  <span class="short-badge">⚡ Short</span>
+                }
+                @if (featured.dateKey) {
+                  <span class="date-badge">📅 {{ featured.dateKey }}</span>
+                }
                 @if (featured.isAutoSynced) {
-                  <span class="sync-badge">📡 Live Feed</span>
+                  <span class="sync-badge">📡 Auto-Synced</span>
                 }
               </div>
               @if (featured.viewCount > 0) {
@@ -97,6 +103,67 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
         </section>
       }
 
+      <!-- Date Filter Strip (Default: Date-wise view of latest/selected date; toggle All available) -->
+      <section class="date-filter-bar" aria-label="Filter videos by date">
+        <div class="date-mode-row">
+          <div class="date-controls-left">
+            <span class="df-label">📅 Date Filter:</span>
+            <button
+              type="button"
+              class="df-btn"
+              [disabled]="showAllDates()"
+              (click)="shiftDate(-1)"
+              title="Previous day">
+              ‹ Prev
+            </button>
+            <input
+              type="date"
+              class="df-input"
+              [value]="selectedDate()"
+              (change)="onDateInput($event)"
+              aria-label="Select date for videos" />
+            <button
+              type="button"
+              class="df-btn"
+              [disabled]="showAllDates()"
+              (click)="shiftDate(1)"
+              title="Next day">
+              Next ›
+            </button>
+            <button
+              type="button"
+              class="df-btn"
+              [class.active]="!showAllDates() && selectedDate() === todayDateKey()"
+              (click)="jumpToDate(todayDateKey())">
+              Today
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="df-all-btn"
+            [class.active]="showAllDates()"
+            (click)="toggleAllDates()">
+            {{ showAllDates() ? '✓ Showing All Dates (' + totalAllCount() + ')' : '🌐 All Videos (' + totalAllCount() + ')' }}
+          </button>
+        </div>
+
+        @if (availableDates().length > 0) {
+          <div class="available-dates-row">
+            <span class="avail-lbl">Recent dates with videos:</span>
+            @for (d of availableDates().slice(0, 8); track d) {
+              <button
+                type="button"
+                class="avail-chip"
+                [class.active]="!showAllDates() && selectedDate() === d"
+                (click)="jumpToDate(d)">
+                {{ d }}
+              </button>
+            }
+          </div>
+        }
+      </section>
+
       <!-- Category Filter Tabs -->
       <div class="category-tabs">
         @for (cat of categories(); track cat) {
@@ -116,11 +183,28 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
       } @else if (filteredVideos().length === 0) {
         <section class="empty-videos-card">
           <div class="empty-icon">📺</div>
-          <h3>अभी इस श्रेणी में कोई सिंक किया गया वीडियो उपलब्ध नहीं है</h3>
-          <p>
-            यूट्यूब चैनलों से नवीनतम वीडियो ऑटो-सिंक होते हैं। एडमिन कंसोल से एक क्लिक में लाइव फ़ीड सिंक करें या हमारे चैनलों को सीधे देखें:
-          </p>
+          @if (!showAllDates() && selectedDate()) {
+            <h3>{{ selectedDate() }} के लिए इस श्रेणी में कोई वीडियो उपलब्ध नहीं है</h3>
+            <p>
+              चयनित दिनांक (<strong>{{ selectedDate() }}</strong>) पर कोई वीडियो सिंक या सेव नहीं है। आप नीचे से सभी दिनांक के वीडियो देख सकते हैं या नवीनतम उपलब्ध दिनांक पर जा सकते हैं:
+            </p>
+          } @else {
+            <h3>अभी इस श्रेणी में कोई सिंक किया गया वीडियो उपलब्ध नहीं है</h3>
+            <p>
+              यूट्यूब चैनलों व AnimStudio Auto-Post से वीडियो यहाँ दिनांक के अनुसार स्वतः सिंक होते हैं।
+            </p>
+          }
           <div class="empty-actions">
+            @if (!showAllDates() && totalAllCount() > 0) {
+              <button type="button" class="btn-admin-sync" (click)="showAllVideos()">
+                🌐 सभी वीडियो देखें (Show All {{ totalAllCount() }})
+              </button>
+              @if (availableDates().length > 0 && availableDates()[0] !== selectedDate()) {
+                <button type="button" class="btn-theater" (click)="jumpToDate(availableDates()[0])">
+                  📅 Latest ({{ availableDates()[0] }})
+                </button>
+              }
+            }
             @for (ch of connectedChannels(); track ch.id || ch.key) {
               <a [href]="ch.url" target="_blank" rel="noopener" class="btn-yt-sub">
                 ▶️ Watch {{ ch.name }}
@@ -143,9 +227,9 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
               <div class="thumb-container">
                 <img [src]="vid.thumbnailUrl" [alt]="vid.title" class="video-thumb" loading="lazy" decoding="async" />
                 @if (vid.isAutoSynced) {
-                  <span class="live-chip">📡 RSS</span>
+                  <span class="live-chip">📡 {{ vid.format === 'Short' ? 'Short' : 'Auto' }}</span>
                 }
-                <span class="duration-badge">{{ vid.durationMinutes || 'Video' }}</span>
+                <span class="duration-badge">{{ vid.dateKey || vid.durationMinutes || 'Video' }}</span>
                 <div class="play-overlay">▶</div>
               </div>
               <div class="card-info">
@@ -153,7 +237,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
                 <h4>{{ vid.title }}</h4>
                 <div class="card-footer">
                   <span>{{ vid.channelName }}</span>
-                  <span>{{ vid.viewCount > 0 ? (vid.viewCount | number) + ' views' : (vid.publishedDate | date:'MMM d') }}</span>
+                  <span>{{ vid.viewCount > 0 ? (vid.viewCount | number) + ' views' : (vid.dateKey || (vid.publishedDate | date:'MMM d')) }}</span>
                 </div>
               </div>
             </article>
@@ -549,6 +633,103 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
       transition: transform 0.2s;
     }
     .btn-funnel-cta:hover { transform: scale(1.03); }
+
+    .date-filter-bar {
+      background: #fffaf5;
+      border: 1px solid #fed7aa;
+      border-radius: 14px;
+      padding: 0.85rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .date-mode-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .date-controls-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .df-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #9a3412;
+      margin-right: 0.2rem;
+    }
+    .df-btn, .avail-chip {
+      background: #ffffff;
+      border: 1px solid #fdba74;
+      color: #7c2d12;
+      padding: 0.35rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .df-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .df-btn.active, .avail-chip.active {
+      background: #ea580c;
+      color: #ffffff;
+      border-color: #ea580c;
+    }
+    .df-input {
+      border: 1px solid #fdba74;
+      border-radius: 8px;
+      padding: 0.32rem 0.6rem;
+      font-size: 0.85rem;
+      color: #431407;
+      background: #ffffff;
+    }
+    .df-all-btn {
+      background: #ffffff;
+      border: 1px solid #9a3412;
+      color: #9a3412;
+      padding: 0.42rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .df-all-btn.active {
+      background: #9a3412;
+      color: #ffffff;
+    }
+    .available-dates-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .avail-lbl {
+      font-size: 0.78rem;
+      color: #78350f;
+      font-weight: 600;
+    }
+    .short-badge {
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 700;
+      font-size: 0.74rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+    .date-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+      font-size: 0.74rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
   `]
 })
 export class VideoHubComponent implements OnInit {
@@ -562,6 +743,11 @@ export class VideoHubComponent implements OnInit {
   readonly loadingVideos = signal<boolean>(true);
   readonly selectedCategory = signal<string>('All');
   readonly selectedChannel = signal<string>('All');
+  readonly selectedDate = signal<string>('');
+  readonly todayDateKey = signal<string>(new Date().toISOString().slice(0, 10));
+  readonly availableDates = signal<string[]>([]);
+  readonly showAllDates = signal<boolean>(false);
+  readonly totalAllCount = signal<number>(0);
   readonly theaterMode = signal<boolean>(false);
   readonly siteConfig = signal<PanchangSiteConfig | null>(null);
   readonly categories = signal<string[]>([
@@ -595,23 +781,64 @@ export class VideoHubComponent implements OnInit {
         this.categories.set(['All', ...cfg.videoCategories]);
       }
     });
-    this.loadVideos();
+    this.loadVideos(true);
   }
 
   selectCategory(cat: string): void {
     this.selectedCategory.set(cat);
-    this.loadVideos();
+    this.loadVideos(false);
   }
 
-  loadVideos(): void {
+  onDateInput(event: Event): void {
+    const value = (event.target as HTMLInputElement)?.value;
+    if (!value) return;
+    this.jumpToDate(value);
+  }
+
+  jumpToDate(dateKey: string): void {
+    this.showAllDates.set(false);
+    this.selectedDate.set(dateKey);
+    this.loadVideos(false);
+  }
+
+  shiftDate(deltaDays: number): void {
+    const base = this.selectedDate() || this.todayDateKey();
+    const dt = new Date(`${base}T00:00:00Z`);
+    if (Number.isNaN(dt.getTime())) return;
+    dt.setUTCDate(dt.getUTCDate() + deltaDays);
+    this.jumpToDate(dt.toISOString().slice(0, 10));
+  }
+
+  toggleAllDates(): void {
+    this.showAllDates.set(!this.showAllDates());
+    this.loadVideos(false);
+  }
+
+  showAllVideos(): void {
+    this.showAllDates.set(true);
+    this.loadVideos(false);
+  }
+
+  loadVideos(initialLoad = false): void {
     this.loadingVideos.set(true);
-    this.panchangService.getVideos(this.selectedCategory())
+    this.panchangService.getVideoFeed({
+      category: this.selectedCategory(),
+      date: initialLoad || this.showAllDates() ? null : (this.selectedDate() || null),
+      allDates: this.showAllDates()
+    })
       .pipe(finalize(() => this.loadingVideos.set(false)))
-      .subscribe(vids => {
-        this.allVideos.set(vids);
+      .subscribe(feed => {
+        this.allVideos.set(feed.videos ?? []);
+        if (feed.todayDateKey) this.todayDateKey.set(feed.todayDateKey);
+        if (feed.selectedDate) this.selectedDate.set(feed.selectedDate);
+        this.availableDates.set(feed.availableDates ?? []);
+        this.totalAllCount.set(feed.totalAllDatesCount ?? (feed.videos?.length ?? 0));
+        this.showAllDates.set(!!feed.showAllDates);
+
+        const vids = feed.videos ?? [];
         const current = this.featuredVideo();
         if (!current || !vids.some(v => v.id === current.id)) {
-          const picked = vids.find(v => v.isFeaturedDailyVideo) || vids[0] || null;
+          const picked = feed.featuredVideo || vids.find(v => v.isFeaturedDailyVideo) || vids[0] || null;
           this.featuredVideo.set(picked);
         }
       });

@@ -18,4 +18,40 @@ public class SpiritualVideo
     public string ChannelUrl { get; set; } = string.Empty;
     public string SourceChannelHandle { get; set; } = string.Empty;
     public bool IsAutoSynced { get; set; }
+    /// <summary>IST calendar date key (yyyy-MM-dd) used to filter daily &amp; historical videos by date.</summary>
+    public string DateKey { get; set; } = string.Empty;
+    /// <summary>Originating pipeline or feed type (e.g. HinduPanchang, HinduFestival, DailyKatha, AajKaItihaas, YouTubeSync).</summary>
+    public string SourceType { get; set; } = string.Empty;
+    /// <summary>Optional AnimStudio AutomationPost ID so repeated syncs upsert cleanly.</summary>
+    public string AutomationPostId { get; set; } = string.Empty;
+    /// <summary>Video format (Short or Video).</summary>
+    public string Format { get; set; } = string.Empty;
+}
+
+public sealed record VideoFeedResponse(
+    string? SelectedDate,
+    bool ShowAllDates,
+    string TodayDateKey,
+    IReadOnlyList<string> AvailableDates,
+    int TotalAllDatesCount,
+    SpiritualVideo? FeaturedVideo,
+    List<SpiritualVideo> Videos);
+
+public sealed class AutomationVideoSyncRequest
+{
+    public string? AutomationPostId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? YouTubeUrl { get; set; }
+    public string? YouTubeVideoId { get; set; }
+    public string? Category { get; set; }
+    public string? SourceType { get; set; }
+    public string? DateKey { get; set; }
+    public DateTime? PublishedDate { get; set; }
+    public string? ChannelName { get; set; }
+    public string? ChannelUrl { get; set; }
+    public string? SourceChannelHandle { get; set; }
+    public string? Format { get; set; }
+    public string? ThumbnailUrl { get; set; }
+    public bool IsFeaturedDailyVideo { get; set; }
 }

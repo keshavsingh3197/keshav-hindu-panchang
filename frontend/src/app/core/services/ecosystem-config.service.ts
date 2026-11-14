@@ -22,13 +22,13 @@ export class EcosystemConfigService {
 
   readonly ecosystemBarSites = computed(() =>
     this.websites()
-      .filter(w => w.showInEcosystemBar)
+      .filter(w => w.showInEcosystemBar && !['blog', 'blog-admin', 'admin', 'ghar-ledger'].includes((w.key || '').toLowerCase()))
       .sort((a, b) => a.sortOrder - b.sortOrder)
   );
 
   readonly footerSites = computed(() =>
     this.websites()
-      .filter(w => ['studio', 'social', 'panchang', 'admin', 'blog', 'pratiyogita'].includes(w.key))
+      .filter(w => ['studio', 'social', 'panchang', 'pratiyogita', 'portfolio'].includes((w.key || '').toLowerCase()))
       .sort((a, b) => a.sortOrder - b.sortOrder)
   );
 
@@ -39,9 +39,14 @@ export class EcosystemConfigService {
   );
 
   readonly panchangChannels = computed(() => {
-    const flagged = this.enabledChannels().filter(c => c.showInPanchang);
+    const isPersonal = (c: CentralChannelItem) => {
+      const hay = `${c.handle || ''} ${c.url || ''} ${c.name || ''}`.toLowerCase();
+      return hay.includes('keshavsinghworld') || hay.includes('keshav singh world');
+    };
+    const nonPersonal = this.enabledChannels().filter(c => !isPersonal(c));
+    const flagged = nonPersonal.filter(c => c.showInPanchang);
     if (flagged.length > 0) return flagged;
-    return this.enabledChannels().filter(c => (c.platform || '').toLowerCase() === 'youtube');
+    return nonPersonal.filter(c => (c.platform || '').toLowerCase() === 'youtube');
   });
 
   readonly footerChannels = computed(() =>

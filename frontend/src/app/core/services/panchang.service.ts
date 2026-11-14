@@ -14,7 +14,7 @@ import {
   PanchangOverride,
   PanchangSiteConfig
 } from '../models/panchang.models';
-import { SpiritualVideo } from '../models/video.models';
+import { SpiritualVideo, VideoFeedResponse } from '../models/video.models';
 
 @Injectable({ providedIn: 'root' })
 export class PanchangService {
@@ -88,6 +88,40 @@ export class PanchangService {
     const query = category && category !== 'All' ? `?category=${encodeURIComponent(category)}` : '';
     return this.http.get<SpiritualVideo[]>(`${this.api}/videohub/videos${query}`).pipe(
       catchError(() => of([]))
+    );
+  }
+
+  getVideoFeed(options?: {
+    category?: string;
+    date?: string | null;
+    allDates?: boolean;
+    channel?: string;
+  }): Observable<VideoFeedResponse> {
+    const params: string[] = [];
+    if (options?.category && options.category !== 'All') {
+      params.push(`category=${encodeURIComponent(options.category)}`);
+    }
+    if (options?.allDates) {
+      params.push('allDates=true');
+    } else if (options?.date) {
+      params.push(`date=${encodeURIComponent(options.date)}`);
+    }
+    if (options?.channel && options.channel !== 'All') {
+      params.push(`channel=${encodeURIComponent(options.channel)}`);
+    }
+    const qs = params.length ? `?${params.join('&')}` : '';
+    return this.http.get<VideoFeedResponse>(`${this.api}/videohub/feed${qs}`).pipe(
+      catchError(() =>
+        of({
+          selectedDate: options?.date ?? null,
+          showAllDates: !!options?.allDates,
+          todayDateKey: new Date().toISOString().slice(0, 10),
+          availableDates: [],
+          totalAllDatesCount: 0,
+          featuredVideo: null,
+          videos: []
+        })
+      )
     );
   }
 
