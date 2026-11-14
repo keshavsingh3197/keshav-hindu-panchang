@@ -2,16 +2,18 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SpiritualVideo } from '../../core/models/video.models';
 import { PanchangSiteConfig } from '../../core/models/panchang.models';
+import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
 @Component({
   selector: 'app-video-hub',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, LoadingStateComponent],
   template: `
     <div class="video-hub-page">
       <div class="header-box">
@@ -109,7 +111,9 @@ import { PanchangSiteConfig } from '../../core/models/panchang.models';
       </div>
 
       <!-- Empty State OR Video Grid -->
-      @if (filteredVideos().length === 0) {
+      @if (loadingVideos()) {
+        <app-loading-state variant="cards" [count]="6" label="आध्यात्मिक वीडियो लोड हो रहे हैं… / Loading spiritual videos…" />
+      } @else if (filteredVideos().length === 0) {
         <section class="empty-videos-card">
           <div class="empty-icon">📺</div>
           <h3>अभी इस श्रेणी में कोई सिंक किया गया वीडियो उपलब्ध नहीं है</h3>
@@ -137,7 +141,7 @@ import { PanchangSiteConfig } from '../../core/models/panchang.models';
               [class.now-playing]="featuredVideo()?.id === vid.id"
               (click)="setFeatured(vid)">
               <div class="thumb-container">
-                <img [src]="vid.thumbnailUrl" [alt]="vid.title" class="video-thumb" loading="lazy" />
+                <img [src]="vid.thumbnailUrl" [alt]="vid.title" class="video-thumb" loading="lazy" decoding="async" />
                 @if (vid.isAutoSynced) {
                   <span class="live-chip">📡 RSS</span>
                 }
@@ -555,6 +559,7 @@ export class VideoHubComponent implements OnInit {
 
   readonly allVideos = signal<SpiritualVideo[]>([]);
   readonly featuredVideo = signal<SpiritualVideo | null>(null);
+  readonly loadingVideos = signal<boolean>(true);
   readonly selectedCategory = signal<string>('All');
   readonly selectedChannel = signal<string>('All');
   readonly theaterMode = signal<boolean>(false);
@@ -599,14 +604,17 @@ export class VideoHubComponent implements OnInit {
   }
 
   loadVideos(): void {
-    this.panchangService.getVideos(this.selectedCategory()).subscribe(vids => {
-      this.allVideos.set(vids);
-      const current = this.featuredVideo();
-      if (!current || !vids.some(v => v.id === current.id)) {
-        const picked = vids.find(v => v.isFeaturedDailyVideo) || vids[0] || null;
-        this.featuredVideo.set(picked);
-      }
-    });
+    this.loadingVideos.set(true);
+    this.panchangService.getVideos(this.selectedCategory())
+      .pipe(finalize(() => this.loadingVideos.set(false)))
+      .subscribe(vids => {
+        this.allVideos.set(vids);
+        const current = this.featuredVideo();
+        if (!current || !vids.some(v => v.id === current.id)) {
+          const picked = vids.find(v => v.isFeaturedDailyVideo) || vids[0] || null;
+          this.featuredVideo.set(picked);
+        }
+      });
   }
 
   setFeatured(vid: SpiritualVideo): void {
