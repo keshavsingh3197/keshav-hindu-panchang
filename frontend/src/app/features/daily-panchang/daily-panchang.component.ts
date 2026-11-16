@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
+import { LocaleService } from '../../core/services/locale.service';
 import { PanchangCity, PanchangData, toLocalDateKey } from '../../core/models/panchang.models';
 import { AdSlotComponent } from '../shared/ad-slot/ad-slot.component';
 import { LoadingStateComponent } from '../shared/loading/loading-state.component';
@@ -89,37 +90,37 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
         <!-- 5 Limbs (Pancha-Anga) Cards -->
         <section class="section">
           <div class="section-title">
-            <h2>पंचांग के पांच अंग (The 5 Core Limbs)</h2>
+            <h2>{{ locale.t('panchang.limbs.heading') }}</h2>
             <span class="sub-badge">{{ p.ayanamsaName || 'Lahiri Chitrapaksha' }} • {{ p.calculationNote || 'Sunrise Astronomical Ephemeris' }}</span>
           </div>
 
           <div class="grid grid-5">
             <div class="limb-card">
-              <div class="limb-label">तिथि (Tithi)</div>
+              <div class="limb-label">{{ locale.t('panchang.card.tithi') }}</div>
               <div class="limb-val">{{ p.tithi }}</div>
               <div class="limb-sub">{{ p.tithiEndTime }}</div>
             </div>
 
             <div class="limb-card">
-              <div class="limb-label">नक्षत्र (Nakshatra)</div>
+              <div class="limb-label">{{ locale.t('panchang.card.nakshatra') }}</div>
               <div class="limb-val">{{ p.nakshatra }}</div>
               <div class="limb-sub">{{ p.nakshatraEndTime }}</div>
             </div>
 
             <div class="limb-card">
-              <div class="limb-label">योग (Yoga)</div>
+              <div class="limb-label">{{ locale.t('panchang.card.yoga') }}</div>
               <div class="limb-val">{{ p.yoga }}</div>
               <div class="limb-sub">{{ p.yogaEndTime }}</div>
             </div>
 
             <div class="limb-card">
-              <div class="limb-label">करण (Karana)</div>
+              <div class="limb-label">{{ locale.t('panchang.card.karana') }}</div>
               <div class="limb-val">{{ p.karana }}</div>
               <div class="limb-sub">{{ p.karanaEndTime }}</div>
             </div>
 
             <div class="limb-card">
-              <div class="limb-label">वार (Vaara)</div>
+              <div class="limb-label">{{ locale.t('panchang.card.vaara') }}</div>
               <div class="limb-val">{{ p.vaara }}</div>
               <div class="limb-sub">{{ p.dayOfWeek }}</div>
             </div>
@@ -130,30 +131,30 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
         <div class="timing-grid">
           <!-- Celestial Timings -->
           <div class="card timing-card">
-            <h3>☀️ सूर्य एवं चन्द्रमा का समय (Sun & Moon)</h3>
+            <h3>{{ locale.t('panchang.sunMoon.heading') }}</h3>
             <div class="two-col-list">
               <div class="time-row">
-                <span class="t-name">सूर्योदय (Sunrise)</span>
+                <span class="t-name">{{ locale.t('panchang.sun.sunrise') }}</span>
                 <span class="t-time">{{ p.sunrise }}</span>
               </div>
               <div class="time-row">
-                <span class="t-name">सूर्यास्त (Sunset)</span>
+                <span class="t-name">{{ locale.t('panchang.sun.sunset') }}</span>
                 <span class="t-time">{{ p.sunset }}</span>
               </div>
               <div class="time-row">
-                <span class="t-name">चन्द्रोदय (Moonrise)</span>
+                <span class="t-name">{{ locale.t('panchang.sun.moonrise') }}</span>
                 <span class="t-time">{{ p.moonrise }}</span>
               </div>
               <div class="time-row">
-                <span class="t-name">चन्द्रास्त (Moonset)</span>
+                <span class="t-name">{{ locale.t('panchang.sun.moonset') }}</span>
                 <span class="t-time">{{ p.moonset }}</span>
               </div>
               <div class="time-row">
-                <span class="t-name">सूर्य राशि (Sun Sign)</span>
+                <span class="t-name">{{ locale.t('panchang.sun.sunSign') }}</span>
                 <span class="t-time">{{ p.sunSign }}</span>
               </div>
               <div class="time-row">
-                <span class="t-name">चन्द्र राशि (Moon Sign)</span>
+                <span class="t-name">{{ locale.t('panchang.sun.moonSign') }}</span>
                 <span class="t-time">{{ p.moonSign }}</span>
               </div>
             </div>
@@ -161,30 +162,30 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
 
           <!-- Muhurat & Kaal -->
           <div class="card timing-card">
-            <h3>⏳ शुभ एवं अशुभ मुहूर्त (Muhurat Timings)</h3>
+            <h3>{{ locale.t('panchang.muhurat.heading') }}</h3>
             <div class="two-col-list">
               <div class="time-row auspicious">
-                <span class="t-name">ब्रह्म मुहूर्त (Brahma Muhurat)</span>
+                <span class="t-name">{{ locale.t('panchang.card.brahma') }}</span>
                 <span class="t-time">{{ p.brahmaMuhurat }}</span>
               </div>
               <div class="time-row auspicious">
-                <span class="t-name">अभिजीत मुहूर्त (Abhijit Muhurat)</span>
+                <span class="t-name">{{ locale.t('panchang.card.abhijit') }}</span>
                 <span class="t-time">{{ p.abhijitMuhurat }}</span>
               </div>
               <div class="time-row auspicious">
-                <span class="t-name">अमृत काल (Amrit Kaal)</span>
+                <span class="t-name">{{ locale.t('panchang.card.amrit') }}</span>
                 <span class="t-time">{{ p.amritKaal }}</span>
               </div>
               <div class="time-row inauspicious">
-                <span class="t-name">राहुकाल (Rahu Kaal - अशुभ)</span>
+                <span class="t-name">{{ locale.t('panchang.card.rahuKaal') }}</span>
                 <span class="t-time alert-tag">{{ p.rahuKaal }}</span>
               </div>
               <div class="time-row inauspicious">
-                <span class="t-name">यमगण्ड (Yamaganda)</span>
+                <span class="t-name">{{ locale.t('panchang.card.yamaganda') }}</span>
                 <span class="t-time">{{ p.yamaganda }}</span>
               </div>
               <div class="time-row inauspicious">
-                <span class="t-name">गुलिक काल (Gulika Kaal)</span>
+                <span class="t-name">{{ locale.t('panchang.card.gulika') }}</span>
                 <span class="t-time">{{ p.gulikaKaal }}</span>
               </div>
             </div>
@@ -194,8 +195,8 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
         <!-- Choghadiya Section -->
         <section class="section">
           <div class="section-title">
-            <h2>दिन का चौघड़िया (Day Choghadiya)</h2>
-            <span class="sub-badge">For Auspicious Works & Travel</span>
+            <h2>{{ locale.t('panchang.choghadiya.heading') }}</h2>
+            <span class="sub-badge">{{ locale.t('panchang.choghadiya.sub') }}</span>
           </div>
 
           <div class="choghadiya-row">
@@ -212,11 +213,11 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
         <!-- Quick Video Feature Preview -->
         <section class="video-cta-card">
           <div class="v-cta-content">
-            <span class="v-tag">🎥 दैनिक वीडियो प्रसारण</span>
-            <h3>आज का दैनिक राशिफल और पंचांग विचार वीडियो देखें</h3>
-            <p>आज के ग्रहों की स्थिति, 12 राशियों का फल, और दैनिक उपाय वीडियो में देखें। सीधे यूट्यूब पर जुड़ें।</p>
+            <span class="v-tag">{{ locale.t('panchang.cta.tag') }}</span>
+            <h3>{{ locale.t('panchang.cta.title') }}</h3>
+            <p>{{ locale.t('panchang.cta.desc') }}</p>
             <div class="v-cta-actions">
-              <a routerLink="/videos" class="btn-video">दैनिक वीडियो देखें (Watch Daily Videos) →</a>
+              <a routerLink="/videos" class="btn-video">{{ locale.t('panchang.cta.btn') }}</a>
               @if (studioPortalUrl(); as studioUrl) {
                 <a [href]="studioUrl + '/automation?source=HinduPanchang&date=' + selectedDate()" target="_blank" rel="noopener" class="btn-video btn-video-studio">
                   ⚡ Auto-Post / AI Video in Studio →
@@ -529,6 +530,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
 export class DailyPanchangComponent implements OnInit {
   private panchangService = inject(PanchangService);
   private ecosystem = inject(EcosystemConfigService);
+  readonly locale = inject(LocaleService);
   private route = inject(ActivatedRoute);
 
   readonly studioPortalUrl = this.ecosystem.studioPortalUrl;

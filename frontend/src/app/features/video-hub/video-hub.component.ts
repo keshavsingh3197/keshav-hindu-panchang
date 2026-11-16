@@ -5,8 +5,10 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
+import { LocaleService } from '../../core/services/locale.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SpiritualVideo } from '../../core/models/video.models';
+import { CentralChannelItem } from '../../core/models/ecosystem.models';
 import { PanchangSiteConfig } from '../../core/models/panchang.models';
 import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
@@ -18,7 +20,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
     <div class="video-hub-page">
       <div class="header-box">
         <span class="hub-tag">🕉️ दैनिक वीडियो एवं समाचार प्रसारण</span>
-        <h1>दैनिक आध्यात्मिक वीडियो हब (Daily Spiritual Videos &amp; News)</h1>
+        <h1>{{ locale.t('panchang.videoHub.title') }}</h1>
         <p>
           {{ siteConfig()?.dailyBroadcastBanner || 'प्रतिदिन नवीनतम पंचांग विश्लेषण, पौराणिक कथाएं, मंत्र जाप और आध्यात्मिक वीडियो देखें।' }}
         </p>
@@ -206,9 +208,11 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
               }
             }
             @for (ch of connectedChannels(); track ch.id || ch.key) {
-              <a [href]="ch.url" target="_blank" rel="noopener" class="btn-yt-sub">
-                ▶️ Watch {{ ch.name }}
-              </a>
+              @if (ch.url) {
+                <a [href]="ch.url" target="_blank" rel="noopener" class="btn-yt-sub">
+                  ▶️ Watch {{ ch.name }}
+                </a>
+              }
             }
             @if (auth.isAdmin()) {
               <a routerLink="/admin" class="btn-admin-sync">
@@ -737,6 +741,7 @@ export class VideoHubComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   readonly ecosystem = inject(EcosystemConfigService);
   readonly auth = inject(AuthService);
+  readonly locale = inject(LocaleService);
 
   readonly allVideos = signal<SpiritualVideo[]>([]);
   readonly featuredVideo = signal<SpiritualVideo | null>(null);
@@ -758,7 +763,40 @@ export class VideoHubComponent implements OnInit {
     'Temple Darshan'
   ]);
 
-  readonly connectedChannels = this.ecosystem.panchangChannels;
+  /**
+   * Panchang's own channels, plus any other channel (e.g. Keshav Singh World) that has videos on the hub
+   * because they were published here explicitly from AnimStudio Auto-Post.
+   */
+  readonly connectedChannels = computed<CentralChannelItem[]>(() => {
+    const result = [...this.ecosystem.panchangChannels()];
+    const seen = new Set(result.map(c => (c.name || '').trim().toLowerCase()));
+    const known = this.ecosystem.enabledChannels();
+    for (const v of this.allVideos()) {
+      const name = (v.channelName || '').trim();
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      const match = known.find(c => (c.name || '').trim().toLowerCase() === key);
+      result.push(match ?? {
+        id: `video-${key}`,
+        key: `video-${key}`,
+        name,
+        handle: '',
+        platform: 'youtube',
+        channelId: '',
+        url: v.channelUrl || '',
+        niche: '',
+        showInAnalytics: false,
+        showInPanchang: true,
+        showInStudio: false,
+        showInFooter: false,
+        isPrimary: false,
+        isEnabled: true,
+        sortOrder: 999
+      });
+    }
+    return result;
+  });
 
   readonly filteredVideos = computed(() => {
     const ch = this.selectedChannel();

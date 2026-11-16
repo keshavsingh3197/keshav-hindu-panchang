@@ -75,6 +75,20 @@ public class VideoHubController : ControllerBase
         return Ok(saved);
     }
 
+    /// <summary>Removes a video that AnimStudio Auto-Post published here. Same auth as <see cref="SyncFromAutomation"/>.</summary>
+    [HttpDelete("automation-sync/{automationPostId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RemoveFromAutomation(string automationPostId)
+    {
+        if (!IsAuthorizedForAutomationSync())
+            return Unauthorized(new { error = "Admin role or valid X-Ecosystem-Key required." });
+        if (string.IsNullOrWhiteSpace(automationPostId) || automationPostId.Length > 128)
+            return BadRequest(new { error = "A valid automation post id is required." });
+
+        var removed = await _videoService.RemoveByAutomationPostIdAsync(automationPostId);
+        return removed ? NoContent() : NotFound(new { error = "No Panchang video is linked to that post." });
+    }
+
     private bool IsAuthorizedForAutomationSync()
     {
         if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))

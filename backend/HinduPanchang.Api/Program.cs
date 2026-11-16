@@ -149,6 +149,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddSingleton<CentralLocalizationService>();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();

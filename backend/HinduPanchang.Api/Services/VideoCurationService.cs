@@ -198,6 +198,13 @@ public partial class VideoCurationService
             || ContainsPersonalHandle(v.ChannelName);
     }
 
+    /// <summary>
+    /// A video someone chose to publish to Panchang (from AnimStudio Auto-Post or the admin console).
+    /// It is shown whatever channel it is on; only the automatic YouTube feed sync skips personal channels.
+    /// </summary>
+    public static bool IsExplicitlyPublished(SpiritualVideo v) =>
+        !string.IsNullOrWhiteSpace(v.AutomationPostId);
+
     internal static bool IsExcludedPersonalChannelHandleOrName(string? handle, string? url, string? name) =>
         ContainsPersonalHandle(handle) || ContainsPersonalHandle(url) || ContainsPersonalHandle(name);
 
@@ -317,7 +324,7 @@ public partial class VideoCurationService
     {
         var query = list
             .Where(v => !IsLegacyDemoVideo(v))
-            .Where(v => includePersonal || !IsExcludedPersonalChannel(v))
+            .Where(v => includePersonal || !IsExcludedPersonalChannel(v) || IsExplicitlyPublished(v))
             .Select(v =>
             {
                 if (string.IsNullOrWhiteSpace(v.DateKey))
@@ -392,6 +399,18 @@ public partial class VideoCurationService
         if (sourceType.Contains("Temple", StringComparison.OrdinalIgnoreCase))
             return "Temple Darshan";
         return "Daily News & Rashifal";
+    }
+
+    /// <summary>Takes a video published from AnimStudio Auto-Post off the hub; false when none matched.</summary>
+    public async Task<bool> RemoveByAutomationPostIdAsync(string automationPostId)
+    {
+        if (string.IsNullOrWhiteSpace(automationPostId)) return false;
+        var postId = automationPostId.Trim();
+        var all = await _store.GetListAsync(Collection, PanchangSeedData.DefaultVideos);
+        var removed = false;
+        foreach (var v in all.Where(x => string.Equals(x.AutomationPostId, postId, StringComparison.OrdinalIgnoreCase)).ToList())
+            removed |= await _store.DeleteItemAsync(Collection, v.Id, x => x.Id, PanchangSeedData.DefaultVideos);
+        return removed;
     }
 
     public Task<bool> DeleteVideoAsync(string id) =>

@@ -5,6 +5,11 @@ import { finalize } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
+import {
+  LocaleService,
+  SiteLocalizationAdminState,
+  SiteLocalizationConfigDto
+} from '../../core/services/locale.service';
 import { PanchangSyncService } from '../../core/services/panchang-sync.service';
 import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 import {
@@ -91,7 +96,7 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
           <button [class.active]="activeTab() === 'cities'" (click)="activeTab.set('cities')">
             📍 Cities ({{ cities().length }})
           </button>
-          <button [class.active]="activeTab() === 'site'" (click)="activeTab.set('site')">
+          <button [class.active]="activeTab() === 'site'" (click)="openSiteTab()">
             ⚙️ Site &amp; Global Config
           </button>
         </nav>
@@ -520,6 +525,69 @@ type AdminTab = 'videos' | 'festivals' | 'history' | 'sutras' | 'cities' | 'site
             </div>
 
             <hr class="divider" />
+            <h2>🌐 Language &amp; Localization Policy (Central Admin / Per-Site Override)</h2>
+            <p class="muted">
+              Defaults and enabled languages are read from Central Admin DB (default: <code>hi</code> for Panchang).
+              Enable a per-site override here to enforce Hindi-only, English-only, or custom switcher rules for this website.
+            </p>
+            @if (locAdminState(); as st) {
+              <div class="global-summary">
+                <div><strong>Central Admin Policy:</strong> {{ st.centralAdminPolicy.defaultLocale.toUpperCase() }} ({{ st.centralAdminPolicy.enabledLocales.join(', ') }})</div>
+                <div><strong>Effective Now:</strong> {{ st.effectivePolicy.defaultLocale.toUpperCase() }} • Controlled by: <code>{{ st.effectivePolicy.controlledBy }}</code></div>
+              </div>
+            }
+            <div class="form-grid">
+              <div class="field field-wide">
+                <label class="chk">
+                  <input type="checkbox" [(ngModel)]="locForm.overrideCentralLocalization" />
+                  <span>Override Central Admin localization policy on Panchang site</span>
+                </label>
+              </div>
+              <div class="field">
+                <label>Site Default Language</label>
+                <select [(ngModel)]="locForm.defaultLocale" [disabled]="!locForm.overrideCentralLocalization">
+                  <option value="hi">हिन्दी (Hindi - Default)</option>
+                  <option value="en">English (en)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Enabled Languages</label>
+                <div style="display:flex;gap:1rem;padding-top:0.35rem;">
+                  <label class="chk">
+                    <input type="checkbox" [checked]="hasLocLocale('hi')" [disabled]="!locForm.overrideCentralLocalization" (change)="toggleLocLocale('hi', $event)" />
+                    <span>हिन्दी (hi)</span>
+                  </label>
+                  <label class="chk">
+                    <input type="checkbox" [checked]="hasLocLocale('en')" [disabled]="!locForm.overrideCentralLocalization" (change)="toggleLocLocale('en', $event)" />
+                    <span>English (en)</span>
+                  </label>
+                </div>
+              </div>
+              <div class="field field-wide" style="display:flex;flex-wrap:wrap;gap:1.25rem;">
+                <label class="chk">
+                  <input type="checkbox" [(ngModel)]="locForm.showLanguagePicker" [disabled]="!locForm.overrideCentralLocalization" />
+                  <span>Show header language switcher</span>
+                </label>
+                <label class="chk">
+                  <input type="checkbox" [(ngModel)]="locForm.allowVisitorLanguageSwitch" [disabled]="!locForm.overrideCentralLocalization" />
+                  <span>Allow visitors to switch language</span>
+                </label>
+                <label class="chk">
+                  <input type="checkbox" [(ngModel)]="locForm.forceLocale" [disabled]="!locForm.overrideCentralLocalization" />
+                  <span>Force default language (lock out visitors)</span>
+                </label>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" (click)="saveLocalizationPolicy()" [disabled]="locSaving()" class="btn-primary">
+                {{ locSaving() ? '⏳ Saving...' : '💾 Save Language & Localization Policy' }}
+              </button>
+              <a [href]="ecosystem.adminPortalUrl() + '/website'" target="_blank" rel="noopener" class="central-link">
+                Edit Central Website Defaults →
+              </a>
+            </div>
+
+            <hr class="divider" />
             <h2>Central Global Configuration (Synced Live from Central IDP)</h2>
             <div class="global-summary">
               <div><strong>Creator Name:</strong> {{ ecosystem.creatorName() }}</div>
@@ -599,6 +667,18 @@ export class PanchangAdminComponent implements OnInit {
   readonly auth = inject(AuthService);
   private panchangService = inject(PanchangService);
   readonly ecosystem = inject(EcosystemConfigService);
+  readonly locale = inject(LocaleService);
+
+  readonly locAdminState = signal<SiteLocalizationAdminState | null>(null);
+  readonly locSaving = signal(false);
+  locForm: SiteLocalizationConfigDto = {
+    overrideCentralLocalization: false,
+    defaultLocale: 'hi',
+    enabledLocales: ['hi', 'en'],
+    allowVisitorLanguageSwitch: true,
+    showLanguagePicker: true,
+    forceLocale: false
+  };
 
   readonly activeTab = signal<AdminTab>('videos');
   readonly status = signal<PanchangAdminStatus | null>(null);
@@ -894,6 +974,61 @@ export class PanchangAdminComponent implements OnInit {
   }
 
   // ---- Site Config ----
+  openSiteTab(): void {
+    this.activeTab.set('site');
+    this.loadLocalizationState();
+  }
+
+  loadLocalizationState(): void {
+    this.locale.getSiteLocalizationAdminState().subscribe({
+      next: state => {
+        this.locAdminState.set(state);
+        this.locForm = {
+          overrideCentralLocalization: !!state.localSettings.overrideCentralLocalization,
+          defaultLocale: state.localSettings.defaultLocale || 'hi',
+          enabledLocales: [...(state.localSettings.enabledLocales?.length ? state.localSettings.enabledLocales : ['hi', 'en'])],
+          allowVisitorLanguageSwitch: state.localSettings.allowVisitorLanguageSwitch,
+          showLanguagePicker: state.localSettings.showLanguagePicker,
+          forceLocale: state.localSettings.forceLocale
+        };
+      },
+      error: err => this.notifyError('Failed to load localization policy', err)
+    });
+  }
+
+  hasLocLocale(code: string): boolean {
+    return (this.locForm.enabledLocales || []).includes(code);
+  }
+
+  toggleLocLocale(code: string, ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    const next = new Set(this.locForm.enabledLocales || []);
+    if (checked) {
+      next.add(code);
+    } else if (next.size > 1) {
+      next.delete(code);
+    }
+    this.locForm.enabledLocales = Array.from(next);
+    if (!this.locForm.enabledLocales.includes(this.locForm.defaultLocale)) {
+      this.locForm.defaultLocale = (this.locForm.enabledLocales[0] as 'hi' | 'en') || 'hi';
+    }
+  }
+
+  saveLocalizationPolicy(): void {
+    this.locSaving.set(true);
+    this.locale.updateSiteLocalization(this.locForm).subscribe({
+      next: state => {
+        this.locAdminState.set(state);
+        this.locSaving.set(false);
+        this.notify('Panchang language & localization policy saved.');
+      },
+      error: err => {
+        this.locSaving.set(false);
+        this.notifyError('Failed to save localization policy', err);
+      }
+    });
+  }
+
   saveSiteConfig(): void {
     const payload: PanchangSiteConfig = {
       ...this.siteForm,

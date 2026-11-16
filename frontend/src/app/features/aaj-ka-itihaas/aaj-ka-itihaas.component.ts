@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
+import { LocaleService } from '../../core/services/locale.service';
 import { HistoricalIncident, DailyKatha, toLocalDateKey } from '../../core/models/panchang.models';
 import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
@@ -15,7 +16,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
     <div class="itihaas-page">
       <div class="header-box">
         <span class="sub-pill">📜 दैनिक ऐतिहासिक एवं सांस्कृतिक पटल</span>
-        <h1>आज का इतिहास (Today in Indian & Dharmik History)</h1>
+        <h1>{{ locale.t('panchang.itihaas.title') }}</h1>
         <p>
           भारतीय इतिहास, वैदिक गाथाएं, महान संतों का जीवन दर्शन, एवं स्वतंत्रता संग्राम की प्रमुख घटनाएं, 
           जो आज के दिन घटित हुईं। प्रतिदिन बदलती ऐतिहासिक एवं प्रेरक गाथाएं।
@@ -82,7 +83,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
         @if (loadingIncidents()) {
           <app-loading-state variant="rows" [count]="4" label="आज का इतिहास लोड हो रहा है… / Loading historical events…" />
         } @else if (filteredIncidents().length === 0) {
-          <div class="empty-history">इस तिथि के लिए अभी कोई ऐतिहासिक प्रसंग दर्ज नहीं है।</div>
+          <div class="empty-history">{{ locale.t('panchang.itihaas.empty') }}</div>
         } @else {
           <div class="timeline-list">
             @for (inc of filteredIncidents(); track inc.id) {
@@ -95,7 +96,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
                   </div>
                   <p class="inc-desc">{{ inc.description }}</p>
                   <div class="significance-box">
-                    <strong>सांस्कृतिक महत्व:</strong> {{ inc.culturalSignificance }}
+                    <strong>{{ locale.t('panchang.itihaas.significance') }}</strong> {{ inc.culturalSignificance }}
                   </div>
                 </div>
               </div>
@@ -323,6 +324,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
 export class AajKaItihaasComponent implements OnInit {
   private panchangService = inject(PanchangService);
   private ecosystem = inject(EcosystemConfigService);
+  readonly locale = inject(LocaleService);
 
   readonly studioPortalUrl = this.ecosystem.studioPortalUrl;
   readonly currentDate = signal<string>(toLocalDateKey());
