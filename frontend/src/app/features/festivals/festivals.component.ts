@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
 import { PanchangService } from '../../core/services/panchang.service';
 import { EcosystemConfigService } from '../../core/services/ecosystem-config.service';
+import { LocaleService } from '../../core/services/locale.service';
 import { DevotionalKitItem, FestivalItem } from '../../core/models/panchang.models';
 import { LoadingStateComponent } from '../shared/loading/loading-state.component';
 
@@ -16,7 +17,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
     <div class="festivals-page">
       <div class="header-box">
         <span class="sub-pill">🪔 सनातन पर्व एवं व्रत सारणी</span>
-        <h1>आगामी प्रमुख व्रत एवं त्यौहार (Upcoming Hindu Festivals &amp; Vrats)</h1>
+        <h1>{{ locale.t('panchang.festivals.title') }}</h1>
         <p>
           वैदिक तिथियों के अनुसार आगामी एकादशी, प्रदोष, पूर्णिमा, अमावस्या एवं प्रमुख हिंदू पर्वों की सूची,
           व्रत नियम एवं शास्त्रसम्मत पूजा विधि।
@@ -82,12 +83,12 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
               <p class="fest-desc">{{ fest.description }}</p>
 
               <div class="info-block">
-                <strong>पूजा विधि एवं अनुष्ठान:</strong>
+                <strong>{{ locale.t('panchang.festivals.pujaLabel') }}</strong>
                 <p>{{ fest.ritualsAndPujaVidhi }}</p>
               </div>
 
               <div class="fasting-block">
-                <strong>व्रत नियम (Fasting Rules):</strong>
+                <strong>{{ locale.t('panchang.festivals.fastingLabel') }}</strong>
                 <p>{{ fest.fastingRules }}</p>
               </div>
             </article>
@@ -99,8 +100,8 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
       @if (kits().length > 0) {
         <section class="affiliate-samagri-section">
           <div class="samagri-header">
-            <h3>📦 प्रामाणिक पूजा सामग्री, वैदिक ग्रंथ एवं आध्यात्मिक संसाधन</h3>
-            <p>त्यौहारों एवं दैनिक पूजा के लिए आवश्यक सामग्री, मंत्र वीडियो एवं पावन संसाधन:</p>
+            <h3>{{ locale.t('panchang.festivals.samagriHeading') }}</h3>
+            <p>{{ locale.t('panchang.festivals.samagriSub') }}</p>
           </div>
 
           @defer (on viewport) {
@@ -327,6 +328,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
 export class FestivalsComponent implements OnInit {
   private panchangService = inject(PanchangService);
   private ecosystem = inject(EcosystemConfigService);
+  readonly locale = inject(LocaleService);
 
   readonly studioPortalUrl = this.ecosystem.studioPortalUrl;
   readonly festivals = signal<FestivalItem[]>([]);

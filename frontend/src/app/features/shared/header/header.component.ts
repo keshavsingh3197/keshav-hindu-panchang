@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { LocaleService } from '../../../core/services/locale.service';
 
 @Component({
   selector: 'app-header',
@@ -11,21 +12,36 @@ import { AuthService } from '../../../core/services/auth.service';
     <header class="main-header">
       <div class="header-container">
         <a routerLink="/" class="brand-link">
-          <div class="brand-badge">🕉️ पंचांगम् & संस्कृति</div>
-          <span class="brand-sub">Vedic Panchang & Aaj Ka Itihaas</span>
+          <div class="brand-badge">{{ locale.t('panchang.brand.title') }}</div>
+          <span class="brand-sub">{{ locale.t('panchang.brand.sub') }}</span>
         </a>
 
         <nav class="nav-links">
-          <a routerLink="/panchang" routerLinkActive="active-nav">दैनिक पंचांग (Panchang)</a>
-          <a routerLink="/videos" routerLinkActive="active-nav">🎥 दैनिक वीडियो हब (Videos)</a>
-          <a routerLink="/itihaas" routerLinkActive="active-nav">📜 आज का इतिहास (History)</a>
-          <a routerLink="/festivals" routerLinkActive="active-nav">🪔 व्रत एवं त्यौहार (Festivals)</a>
+          <a routerLink="/panchang" routerLinkActive="active-nav">{{ locale.t('panchang.nav.home') }}</a>
+          <a routerLink="/videos" routerLinkActive="active-nav">🎥 {{ locale.t('panchang.nav.videoHub') }}</a>
+          <a routerLink="/itihaas" routerLinkActive="active-nav">📜 {{ locale.t('panchang.nav.itihaas') }}</a>
+          <a routerLink="/festivals" routerLinkActive="active-nav">🪔 {{ locale.t('panchang.nav.vrat') }}</a>
           @if (auth.isAdmin()) {
-            <a routerLink="/admin" routerLinkActive="active-nav" class="admin-link">🛡️ Admin</a>
+            <a routerLink="/admin" routerLinkActive="active-nav" class="admin-link">🛡️ {{ locale.t('panchang.nav.admin') }}</a>
           }
         </nav>
 
         <div class="header-actions">
+          @if (locale.showPicker()) {
+            <div class="lang-toggle" role="group" [attr.aria-label]="locale.t('ecosystem.language.label')">
+              @for (lang of locale.availableLanguages(); track lang.code) {
+                <button
+                  type="button"
+                  class="lang-btn"
+                  [class.active]="locale.language() === lang.code"
+                  [disabled]="!locale.canSwitch()"
+                  (click)="locale.set(lang.code)"
+                  [title]="lang.label">
+                  {{ lang.shortLabel }}
+                </button>
+              }
+            </div>
+          }
           @if (auth.isAuthenticated()) {
             <div class="user-chip">
               <span class="user-avatar">{{ auth.user()?.displayName?.charAt(0) || 'U' }}</span>
@@ -76,6 +92,28 @@ import { AuthService } from '../../../core/services/auth.service';
       font-size: 0.75rem;
       color: #78350f;
       font-weight: 600;
+    }
+    .lang-toggle {
+      display: inline-flex;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      border-radius: 999px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .lang-btn {
+      border: none;
+      background: transparent;
+      color: #7c2d12;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .lang-btn.active {
+      background: #ea580c;
+      color: #ffffff;
     }
     .nav-links {
       display: flex;
@@ -188,6 +226,7 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class HeaderComponent {
   auth = inject(AuthService);
+  readonly locale = inject(LocaleService);
 
   login(): void {
     this.auth.loginRedirect();

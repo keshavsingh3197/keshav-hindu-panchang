@@ -420,6 +420,54 @@ public class HinduPanchangTests
     }
 
     [Fact]
+    public async Task VideoCurationService_ShowsExplicitlyPublishedVideoFromAnyChannel_AndCanRemoveIt()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var store = CreateStore(root);
+            var svc = new VideoCurationService(store);
+            var todayKey = VideoCurationService.GetIstTodayDateKey();
+
+            await svc.AddOrUpdateVideoAsync(VideoCurationService.MapAutomationSyncRequest(new AutomationVideoSyncRequest
+            {
+                AutomationPostId = "post-itihaas-1",
+                Title = "15 नवंबर 1875: बिरसा मुंडा जयंती",
+                YouTubeVideoId = "itihaas0001",
+                SourceType = "AajKaItihaas",
+                DateKey = todayKey,
+                ChannelName = "KeshavSinghWorld",
+                SourceChannelHandle = "@keshavsinghworld",
+                Format = "Short"
+            }));
+
+            await svc.AddOrUpdateVideoAsync(new SpiritualVideo
+            {
+                Id = "v-personal-feed",
+                Title = "Unrelated vlog pulled by the feed",
+                YouTubeVideoId = "vlog0000001",
+                ChannelName = "Keshav Singh World",
+                SourceChannelHandle = "@keshavsinghworld",
+                DateKey = todayKey,
+                PublishedDate = DateTime.UtcNow
+            });
+
+            var feed = await svc.GetVideoFeedAsync(allDates: true);
+            Assert.Contains(feed.Videos, v => v.AutomationPostId == "post-itihaas-1");
+            Assert.DoesNotContain(feed.Videos, v => v.Id == "v-personal-feed");
+
+            Assert.True(await svc.RemoveByAutomationPostIdAsync("post-itihaas-1"));
+            Assert.False(await svc.RemoveByAutomationPostIdAsync("post-itihaas-1"));
+            var after = await svc.GetVideoFeedAsync(allDates: true);
+            Assert.DoesNotContain(after.Videos, v => v.AutomationPostId == "post-itihaas-1");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
     public async Task VideoHubController_AutomationSync_RequiresKeyAndUpsertsByPostId()
     {
         var root = CreateTempRoot();

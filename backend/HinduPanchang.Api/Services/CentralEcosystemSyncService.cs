@@ -17,6 +17,7 @@ public class CentralEcosystemSyncService
     private readonly YouTubeFeedSyncService _ytFeed;
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILogger<CentralEcosystemSyncService> _logger;
+    private readonly CentralLocalizationService? _centralLocalization;
 
     public CentralEcosystemSyncService(
         IntegrationConfigService integrations,
@@ -24,7 +25,8 @@ public class CentralEcosystemSyncService
         VideoCurationService videos,
         YouTubeFeedSyncService ytFeed,
         IHttpClientFactory httpFactory,
-        ILogger<CentralEcosystemSyncService> logger)
+        ILogger<CentralEcosystemSyncService> logger,
+        CentralLocalizationService? centralLocalization = null)
     {
         _integrations = integrations;
         _cultural = cultural;
@@ -32,6 +34,7 @@ public class CentralEcosystemSyncService
         _ytFeed = ytFeed;
         _httpFactory = httpFactory;
         _logger = logger;
+        _centralLocalization = centralLocalization;
     }
 
     public async Task<PanchangSyncSummary> SyncAllAsync(bool syncVideos = true, CancellationToken ct = default)
@@ -41,27 +44,36 @@ public class CentralEcosystemSyncService
         // 1. Always purge stale demo/placeholder videos first
         summary.LegacyVideosPurged = await _videos.PurgeLegacyDemoVideosAsync();
 
-        // 2. Fetch Central Config envelope
+        // 2. Fetch Central Config envelope directly from shared AdminDb MongoDB first (no HTTP loop),
+        //    falling back to Central Admin HTTP /api/config only if direct Mongo is unavailable.
         var configUrl = await _integrations.GetEffectiveCentralConfigUrlAsync();
         CentralConfigEnvelope? envelope = null;
-        try
+        if (_centralLocalization is not null)
         {
-            var client = _httpFactory.CreateClient("CentralConfigClient");
-            using var res = await client.GetAsync(configUrl, ct);
-            if (!res.IsSuccessStatusCode)
+            envelope = await _centralLocalization.TryLoadCentralEnvelopeFromMongoAsync(ct);
+        }
+
+        if (envelope == null)
+        {
+            try
             {
-                summary.Warnings.Add($"Central config HTTP {(int)res.StatusCode} from {configUrl}");
+                var client = _httpFactory.CreateClient("CentralConfigClient");
+                using var res = await client.GetAsync(configUrl, ct);
+                if (!res.IsSuccessStatusCode)
+                {
+                    summary.Warnings.Add($"Central config HTTP {(int)res.StatusCode} from {configUrl}");
+                    return summary;
+                }
+
+                var json = await res.Content.ReadAsStringAsync(ct);
+                envelope = JsonSerializer.Deserialize<CentralConfigEnvelope>(json, JsonOpts);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Central config sync failed from {Url}", configUrl);
+                summary.Warnings.Add($"Central config unreachable ({ex.Message})");
                 return summary;
             }
-
-            var json = await res.Content.ReadAsStringAsync(ct);
-            envelope = JsonSerializer.Deserialize<CentralConfigEnvelope>(json, JsonOpts);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Central config sync failed from {Url}", configUrl);
-            summary.Warnings.Add($"Central config unreachable ({ex.Message})");
-            return summary;
         }
 
         if (envelope == null)
