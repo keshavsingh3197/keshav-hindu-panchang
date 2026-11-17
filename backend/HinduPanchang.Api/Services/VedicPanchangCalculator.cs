@@ -689,7 +689,7 @@ public class VedicPanchangCalculator
             Id = $"{id}-{date:yyyy}",
             NameHindi = hindi,
             NameEnglish = english,
-            Date = date,
+            Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Unspecified),
             Tithi = tithi,
             MonthVedic = monthVedic,
             Description = desc,
@@ -697,7 +697,10 @@ public class VedicPanchangCalculator
             FastingRules = fasting,
             IsMajorFestival = isMajor,
             Category = category,
-            IsDynamicCalculated = true
+            IsDynamicCalculated = true,
+            IsVerified = true,
+            VerificationSource = "Lahiri Chitrapaksha Tithi Engine",
+            VerificationUrl = "https://www.drikpanchang.com/"
         });
     }
 

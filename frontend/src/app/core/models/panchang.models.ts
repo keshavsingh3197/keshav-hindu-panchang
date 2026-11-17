@@ -54,6 +54,9 @@ export interface HistoricalIncident {
   culturalSignificance: string;
   relatedVideoUrl?: string;
   isExactDateMatch?: boolean;
+  isVerified?: boolean;
+  sourceName?: string;
+  sourceUrl?: string;
 }
 
 export interface DailyKatha {
@@ -78,6 +81,9 @@ export interface FestivalItem {
   isMajorFestival: boolean;
   category?: string;
   isDynamicCalculated?: boolean;
+  isVerified?: boolean;
+  verificationSource?: string;
+  verificationUrl?: string;
 }
 
 export interface PanchangCity {

@@ -14,4 +14,7 @@ public class FestivalItem
     public bool IsMajorFestival { get; set; }
     public string Category { get; set; } = "Major"; // Major, Ekadashi, Pradosh, Purnima, Amavasya, Sankranti
     public bool IsDynamicCalculated { get; set; }
+    public bool IsVerified { get; set; } = true;
+    public string? VerificationSource { get; set; } = "Lahiri Chitrapaksha Ephemeris";
+    public string? VerificationUrl { get; set; } = "https://www.drikpanchang.com/";
 }

@@ -554,4 +554,37 @@ public class HinduPanchangTests
         var emptyCfg = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
         Assert.Null(HybridDataStore.ResolveMongoConnectionString(emptyCfg));
     }
+
+    [Fact]
+    public async Task AajKaItihaas_StrictDateMatching_NeverMixesDifferentCalendarDates()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var store = CreateStore(root);
+            var cultural = new CulturalContentService(store);
+
+            // Nov 18 has verified Nov 18 curated history (never Nov 19 Rani Lakshmibai!)
+            var nov18 = await cultural.GetIncidentsForDateAsync(new DateTime(2026, 11, 18));
+            Assert.NotEmpty(nov18);
+            Assert.All(nov18, i =>
+            {
+                Assert.Equal("11-18", i.DateKey);
+                Assert.True(i.IsExactDateMatch);
+                Assert.DoesNotContain("Lakshmibai", i.Title, StringComparison.OrdinalIgnoreCase);
+            });
+
+            // Nov 19 strictly matches Nov 19 Rani Lakshmibai
+            var nov19 = await cultural.GetIncidentsForDateAsync(new DateTime(2026, 11, 19));
+            Assert.Contains(nov19, i => i.DateKey == "11-19" && i.Title.Contains("Lakshmibai", StringComparison.OrdinalIgnoreCase));
+
+            // A date with no local seed and no external network never injects events from other dates
+            var unseeded = await cultural.GetIncidentsForDateAsync(new DateTime(2026, 7, 7));
+            Assert.All(unseeded, i => Assert.Equal("07-07", i.DateKey));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
 }

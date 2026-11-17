@@ -22,7 +22,7 @@ public class PanchangController : ControllerBase
         [FromQuery] string? date = null,
         [FromQuery] string location = "New Delhi, India")
     {
-        DateTime targetDate = DateTime.UtcNow;
+        DateTime targetDate = VerifiedOnThisDayService.IstNow();
         if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out var parsed))
             targetDate = parsed;
 

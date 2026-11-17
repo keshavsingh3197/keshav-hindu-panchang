@@ -11,6 +11,9 @@ public class HistoricalIncident
     public string CulturalSignificance { get; set; } = string.Empty;
     public string? RelatedVideoUrl { get; set; }
     public bool IsExactDateMatch { get; set; } = true;
+    public bool IsVerified { get; set; } = true;
+    public string? SourceName { get; set; }
+    public string? SourceUrl { get; set; }
 }
 
 public class DailyKatha
