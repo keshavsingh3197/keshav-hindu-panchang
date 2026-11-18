@@ -16,22 +16,22 @@ public class CulturalHistoryController : ControllerBase
     }
 
     [HttpGet("aaj-ka-itihaas")]
-    public async Task<ActionResult<List<HistoricalIncident>>> GetAajKaItihaas([FromQuery] string? date = null)
+    public async Task<ActionResult<List<HistoricalIncident>>> GetAajKaItihaas([FromQuery] string? date = null, CancellationToken ct = default)
     {
-        DateTime targetDate = DateTime.UtcNow;
+        DateTime targetDate = VerifiedOnThisDayService.IstNow();
         if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out var parsed))
         {
             targetDate = parsed;
         }
 
-        var incidents = await _contentService.GetIncidentsForDateAsync(targetDate);
+        var incidents = await _contentService.GetIncidentsForDateAsync(targetDate, ct);
         return Ok(incidents);
     }
 
     [HttpGet("daily-katha")]
     public async Task<ActionResult<DailyKatha>> GetDailyKatha([FromQuery] string? date = null)
     {
-        DateTime targetDate = DateTime.UtcNow;
+        DateTime targetDate = VerifiedOnThisDayService.IstNow();
         if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out var parsed))
         {
             targetDate = parsed;

@@ -16,12 +16,16 @@ if (!string.IsNullOrWhiteSpace(port))
 // Persistence + Dynamic Domain Services
 builder.Services.AddSingleton<HybridDataStore>();
 builder.Services.AddSingleton<CentralAdminConfigReader>();
+builder.Services.AddSingleton<WorldCitySearchService>();
 builder.Services.AddSingleton<VedicPanchangCalculator>();
+builder.Services.AddSingleton<VerifiedOnThisDayService>();
 builder.Services.AddSingleton<CulturalContentService>();
 builder.Services.AddSingleton<VideoCurationService>();
 builder.Services.AddSingleton<IntegrationConfigService>();
 builder.Services.AddHttpClient("CentralConfigClient", c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddHttpClient("YouTubeClient", c => c.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient("WikiOnThisDayClient", c => c.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient("WorldCityGeoClient", c => c.Timeout = TimeSpan.FromSeconds(4));
 builder.Services.AddSingleton<YouTubeFeedSyncService>();
 builder.Services.AddSingleton<CentralEcosystemSyncService>();
 builder.Services.AddHostedService<EcosystemWarmupService>();

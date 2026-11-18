@@ -77,7 +77,7 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
                   <h2>{{ fest.nameHindi }}</h2>
                   <span class="eng-title">({{ fest.nameEnglish }})</span>
                 </div>
-                <span class="fest-date">{{ fest.date | date:'mediumDate' }}</span>
+                <span class="fest-date">{{ formatCalendarDate(fest.date) }}</span>
               </div>
 
               <p class="fest-desc">{{ fest.description }}</p>
@@ -375,12 +375,24 @@ export class FestivalsComponent implements OnInit {
     return !!url && url.startsWith('/');
   }
 
+  formatCalendarDate(dateIso: string): string {
+    const key = (dateIso ?? '').slice(0, 10);
+    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+    if (!parts) return dateIso;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mIdx = Number(parts[2]) - 1;
+    return `${months[mIdx] ?? parts[2]} ${Number(parts[3])}, ${parts[1]}`;
+  }
+
   countdownText(dateIso: string): string {
     if (!dateIso) return 'Upcoming';
-    const target = new Date(dateIso);
+    const key = dateIso.slice(0, 10);
+    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+    if (!parts) return 'Upcoming';
+
     const now = new Date();
-    const t0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    const t1 = Date.UTC(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
+    const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const t1 = Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]));
     const diffDays = Math.round((t1 - t0) / 86400000);
     if (diffDays === 0) return 'आज (Today)';
     if (diffDays === 1) return 'कल (Tomorrow)';

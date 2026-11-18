@@ -16,9 +16,13 @@ public class FestivalsController : ControllerBase
     }
 
     [HttpGet("upcoming")]
-    public async Task<ActionResult<List<FestivalItem>>> GetUpcomingFestivals()
+    public async Task<ActionResult<List<FestivalItem>>> GetUpcomingFestivals([FromQuery] string? date = null)
     {
-        var festivals = await _contentService.GetUpcomingFestivalsAsync();
+        DateTime? anchor = null;
+        if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out var parsed))
+            anchor = parsed.Date;
+
+        var festivals = await _contentService.GetUpcomingFestivalsAsync(anchor);
         return Ok(festivals);
     }
 

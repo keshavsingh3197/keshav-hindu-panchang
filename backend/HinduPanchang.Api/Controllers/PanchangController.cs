@@ -20,13 +20,17 @@ public class PanchangController : ControllerBase
     [HttpGet("daily")]
     public async Task<ActionResult<PanchangData>> GetDailyPanchang(
         [FromQuery] string? date = null,
-        [FromQuery] string location = "New Delhi, India")
+        [FromQuery] string location = "New Delhi, India",
+        [FromQuery] double? lat = null,
+        [FromQuery] double? lon = null,
+        [FromQuery] string? tz = null,
+        CancellationToken ct = default)
     {
-        DateTime targetDate = DateTime.UtcNow;
+        DateTime targetDate = VerifiedOnThisDayService.IstNow();
         if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out var parsed))
             targetDate = parsed;
 
-        var data = await _calculator.CalculateForDateAsync(targetDate, location);
+        var data = await _calculator.CalculateForDateAsync(targetDate, location, lat, lon, tz, ct);
         return Ok(data);
     }
 
@@ -34,6 +38,15 @@ public class PanchangController : ControllerBase
     public async Task<ActionResult<List<PanchangCity>>> GetCities()
     {
         return Ok(await _calculator.GetCitiesAsync());
+    }
+
+    [HttpGet("cities/search")]
+    public async Task<ActionResult<IReadOnlyList<PanchangCity>>> SearchCities(
+        [FromQuery] string? q = null,
+        [FromQuery] int limit = 15,
+        CancellationToken ct = default)
+    {
+        return Ok(await _calculator.SearchCitiesAsync(q, Math.Clamp(limit, 1, 30), ct));
     }
 
     [HttpGet("config")]

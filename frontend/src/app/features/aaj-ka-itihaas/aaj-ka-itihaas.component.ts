@@ -89,14 +89,31 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
             @for (inc of filteredIncidents(); track inc.id) {
               <div class="timeline-item">
                 <div class="year-marker">{{ inc.year }}</div>
-                <div class="incident-card">
+                <div class="incident-card" [class.non-exact-card]="inc.isExactDateMatch === false">
                   <div class="inc-head">
-                    <span class="inc-cat">{{ inc.category }}</span>
+                    <div class="inc-meta-row">
+                      <span class="inc-cat">{{ inc.category }}</span>
+                      @if (inc.isExactDateMatch === false) {
+                        <span class="verify-pill warn">⚠ Archive Date: {{ inc.dateKey }} (Not {{ currentDate() }})</span>
+                      } @else if (inc.isVerified !== false) {
+                        <span class="verify-pill ok">✓ Verified Date Match ({{ inc.dateKey }})</span>
+                      }
+                    </div>
                     <h3>{{ inc.title }}</h3>
                   </div>
                   <p class="inc-desc">{{ inc.description }}</p>
                   <div class="significance-box">
                     <strong>{{ locale.t('panchang.itihaas.significance') }}</strong> {{ inc.culturalSignificance }}
+                  </div>
+                  <div class="verify-links-row">
+                    @if (inc.sourceUrl) {
+                      <a [href]="inc.sourceUrl" target="_blank" rel="noopener" class="verify-link">
+                        🔗 {{ inc.sourceName || 'Verified Source' }} ↗
+                      </a>
+                    }
+                    <a [href]="googleVerifyUrl(inc)" target="_blank" rel="noopener" class="verify-link">
+                      🔍 Verify on Google ↗
+                    </a>
                   </div>
                 </div>
               </div>
@@ -248,8 +265,36 @@ import { LoadingStateComponent } from '../shared/loading/loading-state.component
     .inc-head {
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.35rem;
     }
+    .inc-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .verify-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+    }
+    .verify-pill.ok { background: #dcfce7; color: #166534; }
+    .verify-pill.warn { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+    .non-exact-card { border-color: #f59e0b; background: #fffbeb; }
+    .verify-links-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    .verify-link {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #9a3412;
+      text-decoration: none;
+    }
+    .verify-link:hover { text-decoration: underline; }
     .inc-cat {
       font-size: 0.75rem;
       font-weight: 700;
@@ -353,6 +398,11 @@ export class AajKaItihaasComponent implements OnInit {
   ngOnInit(): void {
     this.ecosystem.load();
     this.loadData();
+  }
+
+  googleVerifyUrl(inc: HistoricalIncident): string {
+    const q = `${inc.title} ${inc.year} ${inc.dateKey}`;
+    return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
   }
 
   loadData(): void {

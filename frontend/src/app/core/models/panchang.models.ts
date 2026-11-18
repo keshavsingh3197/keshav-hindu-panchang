@@ -4,6 +4,141 @@ export interface ChoghadiyaPeriod {
   timeRange: string;
 }
 
+export interface PanchangLocationMeta {
+  cityId: string;
+  displayName: string;
+  state: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  elevationMeters: number;
+  timeZoneId: string;
+  effectiveUtcOffsetHours: number;
+  isDaylightSavingActive: boolean;
+  sunriseMethod: string;
+}
+
+export interface PanchangTransitionItem {
+  name: string;
+  startMinutesFromMidnight: number;
+  endMinutesFromMidnight: number;
+  timeRangeDisplay: string;
+  endDisplay: string;
+  isFullNight: boolean;
+  note: string;
+}
+
+export interface PanchangHoraPeriod {
+  planet: string;
+  planetSanskrit: string;
+  quality: string;
+  bestFor: string;
+  timeRange: string;
+  startMinutes: number;
+  endMinutes: number;
+}
+
+export interface PanchangLagnaPeriod {
+  name: string;
+  quality: string;
+  timeRange: string;
+  startMinutes: number;
+  endMinutes: number;
+}
+
+export interface PanchangTimelineSegment {
+  label: string;
+  category: string;
+  tone: 'shubh' | 'ashubh' | 'neutral' | string;
+  startMinutes: number;
+  endMinutes: number;
+  startPercent: number;
+  widthPercent: number;
+  timeDisplay: string;
+}
+
+export interface PanchangTimelineData {
+  dayStartMinutes: number;
+  dayEndMinutes: number;
+  sunsetMinutes: number;
+  tithiBars: PanchangTimelineSegment[];
+  nakshatraBars: PanchangTimelineSegment[];
+  yogaBars: PanchangTimelineSegment[];
+  karanaBars: PanchangTimelineSegment[];
+  doshaBands: PanchangTimelineSegment[];
+  auspiciousBands: PanchangTimelineSegment[];
+}
+
+export interface PanchangCalculationCredit {
+  component: string;
+  standard: string;
+  details: string;
+}
+
+export interface PanchangExtendedInfo {
+  lahiriAyanamsaDeg: number;
+  purnimantaDayBanner: string;
+  amantaDayBanner: string;
+  dinamana: string;
+  ratrimana: string;
+  madhyahna: string;
+  civilDawn: string;
+  nauticalDawn: string;
+  astronomicalDawn: string;
+  ritu: string;
+  vedicRitu: string;
+  ayana: string;
+  kaliyugaYear: string;
+  kaliAhargana: string;
+  julianDay: string;
+  modifiedJulianDay: string;
+  nationalCivilDate: string;
+  tithiPercentElapsedAtSunrise: number;
+  nakshatraPercentElapsedAtSunrise: number;
+  yogaPercentElapsedAtSunrise: number;
+  tithiSwami: string;
+  nakshatraSwami: string;
+  yogaSwami: string;
+  suryaNakshatra: string;
+  nextTithi: string;
+  nextNakshatra: string;
+  nextYoga: string;
+  nextKarana: string;
+  tithiTransitions: PanchangTransitionItem[];
+  nakshatraTransitions: PanchangTransitionItem[];
+  yogaTransitions: PanchangTransitionItem[];
+  karanaTransitions: PanchangTransitionItem[];
+  nakshatraPadas: PanchangTransitionItem[];
+  moonSignTransitions: PanchangTransitionItem[];
+  pratahSandhya: string;
+  vijayaMuhurat: string;
+  godhuliMuhurat: string;
+  sayahnaSandhya: string;
+  nishitaMuhurat: string;
+  raviYoga: string;
+  varjyam: string;
+  durMuhurtam: string;
+  panchakStatus: string;
+  baana: string;
+  anandadiYoga: string;
+  tamilYoga: string;
+  dishaShool: string;
+  nakshatraShool: string;
+  agnivasa: string;
+  chandravasa: string;
+  shivavasa: string;
+  rahuVasa: string;
+  homahuti: string;
+  chandrabalamGoodRashis: string[];
+  tarabalamGoodNakshatras: string[];
+  sunriseMinutes: number;
+  sunsetMinutes: number;
+  nextSunriseMinutes: number;
+  moonriseMinutes?: number | null;
+  moonsetMinutes?: number | null;
+  credits: PanchangCalculationCredit[];
+}
+
 export interface PanchangData {
   date: string;
   formattedDate: string;
@@ -42,6 +177,13 @@ export interface PanchangData {
   nightChoghadiya: ChoghadiyaPeriod[];
   dailySanskritSutra: string;
   dailySutraMeaning: string;
+  locationMeta?: PanchangLocationMeta;
+  extended?: PanchangExtendedInfo;
+  dayHora?: PanchangHoraPeriod[];
+  nightHora?: PanchangHoraPeriod[];
+  udayaLagnas?: PanchangLagnaPeriod[];
+  panchakaRahitaPeriods?: PanchangLagnaPeriod[];
+  timeline?: PanchangTimelineData;
 }
 
 export interface HistoricalIncident {
@@ -54,6 +196,9 @@ export interface HistoricalIncident {
   culturalSignificance: string;
   relatedVideoUrl?: string;
   isExactDateMatch?: boolean;
+  isVerified?: boolean;
+  sourceName?: string;
+  sourceUrl?: string;
 }
 
 export interface DailyKatha {
@@ -78,16 +223,23 @@ export interface FestivalItem {
   isMajorFestival: boolean;
   category?: string;
   isDynamicCalculated?: boolean;
+  isVerified?: boolean;
+  verificationSource?: string;
+  verificationUrl?: string;
 }
 
 export interface PanchangCity {
   id: string;
   name: string;
   labelHindi: string;
+  state?: string;
   country: string;
   latitude: number;
   longitude: number;
+  elevationMeters?: number;
+  timeZoneId?: string;
   timezoneOffsetHours: number;
+  usesDst?: boolean;
   isActive: boolean;
 }
 

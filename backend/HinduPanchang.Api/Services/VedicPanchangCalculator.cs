@@ -95,10 +95,12 @@ public class VedicPanchangCalculator
     private static readonly int[] GulikaSlot = [6, 5, 4, 3, 2, 1, 0];
 
     private readonly HybridDataStore _store;
+    private readonly WorldCitySearchService _citySearch;
 
-    public VedicPanchangCalculator(HybridDataStore store)
+    public VedicPanchangCalculator(HybridDataStore store, WorldCitySearchService? citySearch = null)
     {
         _store = store;
+        _citySearch = citySearch ?? new WorldCitySearchService();
     }
 
     public readonly record struct AstronomicalAngles(
@@ -115,6 +117,15 @@ public class VedicPanchangCalculator
     {
         var list = await _store.GetListAsync(CitiesCollection, PanchangSeedData.DefaultCities);
         return (includeInactive ? list : list.Where(c => c.IsActive)).ToList();
+    }
+
+    public async Task<IReadOnlyList<PanchangCity>> SearchCitiesAsync(
+        string? query,
+        int limit = 15,
+        CancellationToken ct = default)
+    {
+        var saved = await GetCitiesAsync(includeInactive: true);
+        return await _citySearch.SearchAsync(query, saved, limit, ct);
     }
 
     public async Task<PanchangCity> UpsertCityAsync(PanchangCity city)
@@ -152,38 +163,47 @@ public class VedicPanchangCalculator
     public Task<bool> DeleteOverrideAsync(string dateKey) =>
         _store.DeleteItemAsync<PanchangOverride>(OverridesCollection, dateKey, x => x.DateKey, () => []);
 
-    public async Task<PanchangData> CalculateForDateAsync(DateTime date, string location = "New Delhi, India")
+    public async Task<PanchangData> CalculateForDateAsync(
+        DateTime date,
+        string location = "New Delhi, India",
+        double? lat = null,
+        double? lon = null,
+        string? tz = null,
+        CancellationToken ct = default)
     {
         var dateOnly = date.Date;
         var cities = await GetCitiesAsync(includeInactive: true);
-        var city = cities.FirstOrDefault(c => c.Name.Equals(location, StringComparison.OrdinalIgnoreCase))
-            ?? cities.FirstOrDefault(c => location.Contains(c.Name.Split(',')[0], StringComparison.OrdinalIgnoreCase))
-            ?? cities.FirstOrDefault()
-            ?? new PanchangCity { Name = location, Latitude = 28.6139, Longitude = 77.2090, TimezoneOffsetHours = 5.5 };
+        var city = await _citySearch.ResolveCityAsync(location, cities, lat, lon, tz, ct);
+        var (tzOffsetHours, isDst) = WorldCitySearchService.ResolveOffsetForDate(city.TimeZoneId, city.TimezoneOffsetHours, dateOnly);
+        var (nextTzOffsetHours, _) = WorldCitySearchService.ResolveOffsetForDate(city.TimeZoneId, city.TimezoneOffsetHours, dateOnly.AddDays(1));
 
         var sutras = await GetSutrasAsync();
         var overrides = await GetOverridesAsync();
         var dateKey = dateOnly.ToString("yyyy-MM-dd");
         var ov = overrides.FirstOrDefault(o => o.DateKey == dateKey);
 
-        // 1. Solar Ephemeris (Sunrise / Sunset for exact date & city coordinates)
-        var (sunriseMins, sunsetMins) = ComputeSunriseSunsetMinutes(dateOnly, city.Latitude, city.Longitude, city.TimezoneOffsetHours);
-        double dayLen = Math.Max(480.0, sunsetMins - sunriseMins);
-        double nightLen = 1440.0 - dayLen;
+        // 1. Solar Ephemeris (Upper-Limb Sunrise / Sunset + Twilight for exact date, coordinates & DST)
+        var (sunriseMins, sunsetMins, civilDawn, nauticalDawn, astrDawn) =
+            VedicExtendedEngine.ComputeSunHorizonEvents(dateOnly, city.Latitude, city.Longitude, tzOffsetHours);
+        var (nextSunriseMins, _, _, _, _) =
+            VedicExtendedEngine.ComputeSunHorizonEvents(dateOnly.AddDays(1), city.Latitude, city.Longitude, nextTzOffsetHours);
+        double dayLen = Math.Max(360.0, sunsetMins - sunriseMins);
+        double nightLen = Math.Max(360.0, (nextSunriseMins + 1440.0) - sunsetMins);
         double solarNoon = (sunriseMins + sunsetMins) / 2.0;
 
         int weekday = (int)dateOnly.DayOfWeek;
         double slotDay = dayLen / 8.0;
         double slotNight = nightLen / 8.0;
 
-        // 2. Day & Night Choghadiya dynamically timed
+        // 2. Day & Night Choghadiya dynamically timed across exact Day & Night intervals
         var dayChoghadiya = BuildChoghadiya(sunriseMins, slotDay, DayStartByWeekday[weekday], step: 1);
         var nightChoghadiya = BuildChoghadiya(sunsetMins, slotNight, NightStartByWeekday[weekday], step: 5);
 
         // 3. Sidereal Lahiri Chitrapaksha Pancha-Anga evaluated at local Sunrise
         double jdDayStart = ToJulianDay(dateOnly);
-        double utcSunriseHour = (sunriseMins / 60.0) - city.TimezoneOffsetHours;
+        double utcSunriseHour = (sunriseMins / 60.0) - tzOffsetHours;
         double jdSunrise = jdDayStart + (utcSunriseHour / 24.0);
+        double jdNextSunrise = ToJulianDay(dateOnly.AddDays(1)) + (((nextSunriseMins / 60.0) - nextTzOffsetHours) / 24.0);
 
         var snap = ComputeAstronomicalSnapshot(jdSunrise);
         double elongation = NormalizeDeg(snap.MoonNirayana - snap.SunNirayana);
@@ -198,28 +218,28 @@ public class VedicPanchangCalculator
         int halfTithi = (int)Math.Floor(elongation / 6.0) % 60;
         string karana = ComputeKarana(halfTithi);
 
-        // Numerical root refinement for exact transition end times (resolves apogee/perigee speed variation)
+        // Numerical root refinement for exact transition end times
         double tithiTarget = NormalizeDeg((tithiIdx + 1) * 12.0);
         double tithiEndMins = FindLimbTransitionMinutes(
-            jdSunrise, jdDayStart, city.TimezoneOffsetHours,
+            jdSunrise, jdDayStart, tzOffsetHours,
             jd => NormalizeDeg(ComputeAstronomicalSnapshot(jd).MoonNirayana - ComputeAstronomicalSnapshot(jd).SunNirayana),
             tithiTarget);
 
         double nakTarget = NormalizeDeg((nakshatraIdx + 1) * NakshatraSpanDeg);
         double nakEndMins = FindLimbTransitionMinutes(
-            jdSunrise, jdDayStart, city.TimezoneOffsetHours,
+            jdSunrise, jdDayStart, tzOffsetHours,
             jd => ComputeAstronomicalSnapshot(jd).MoonNirayana,
             nakTarget);
 
         double yogaTarget = NormalizeDeg((yogaIdx + 1) * NakshatraSpanDeg);
         double yogaEndMins = FindLimbTransitionMinutes(
-            jdSunrise, jdDayStart, city.TimezoneOffsetHours,
+            jdSunrise, jdDayStart, tzOffsetHours,
             jd => { var a = ComputeAstronomicalSnapshot(jd); return NormalizeDeg(a.SunNirayana + a.MoonNirayana); },
             yogaTarget);
 
         double karanaTarget = NormalizeDeg((halfTithi + 1) * 6.0);
         double karanaEndMins = FindLimbTransitionMinutes(
-            jdSunrise, jdDayStart, city.TimezoneOffsetHours,
+            jdSunrise, jdDayStart, tzOffsetHours,
             jd => NormalizeDeg(ComputeAstronomicalSnapshot(jd).MoonNirayana - ComputeAstronomicalSnapshot(jd).SunNirayana),
             karanaTarget);
 
@@ -230,7 +250,8 @@ public class VedicPanchangCalculator
         var lunarMonthInfo = DetermineLunarMonthAndYear(jdSunrise, elongation, tithiIdx, dateOnly);
 
         // 5. Topocentric Lunar Rise / Set across the local calendar day
-        var (moonriseStr, moonsetStr) = ComputeMoonRiseSetDisplay(dateOnly, city.Latitude, city.Longitude, city.TimezoneOffsetHours);
+        var (moonriseStr, moonsetStr, moonriseMins, moonsetMins) =
+            ComputeMoonRiseSetDisplay(dateOnly, city.Latitude, city.Longitude, tzOffsetHours);
 
         var selectedSutra = sutras.Count > 0
             ? sutras[Math.Abs(dateOnly.DayOfYear + dateOnly.Year) % sutras.Count]
@@ -241,7 +262,7 @@ public class VedicPanchangCalculator
                 Source = "Bhagavad Gita 2.47"
             };
 
-        return new PanchangData
+        var panchang = new PanchangData
         {
             Date = dateOnly,
             FormattedDate = dateOnly.ToString("dddd, MMMM dd, yyyy"),
@@ -253,7 +274,7 @@ public class VedicPanchangCalculator
             IsAdhikaMaas = lunarMonthInfo.IsAdhika,
             Paksha = paksha,
             AyanamsaName = $"Lahiri Chitrapaksha ({snap.AyanamsaDeg:F2}°)",
-            CalculationNote = $"Sidereal ephemeris at Sunrise ({FormatTimeOfDay(sunriseMins)}) for {city.Latitude:F2}°N, {city.Longitude:F2}°E.",
+            CalculationNote = $"Sidereal ephemeris at Sunrise ({FormatTimeOfDay(sunriseMins)}) for {city.Latitude:F2}°N, {city.Longitude:F2}°E ({city.TimeZoneId}).",
             DayOfWeek = dateOnly.DayOfWeek.ToString(),
             Tithi = string.IsNullOrWhiteSpace(ov?.CustomTithi) ? tithi : ov.CustomTithi,
             TithiEndTime = FormatEndTime(tithiEndMins),
@@ -285,6 +306,31 @@ public class VedicPanchangCalculator
                     ? $"{selectedSutra.EnglishMeaning} ({selectedSutra.Source})"
                     : ov.CustomSutraMeaning
         };
+
+        VedicExtendedEngine.PopulateExtendedAndChart(
+            panchang,
+            dateOnly,
+            city,
+            tzOffsetHours,
+            isDst,
+            sunriseMins,
+            sunsetMins,
+            nextSunriseMins,
+            civilDawn,
+            nauticalDawn,
+            astrDawn,
+            snap,
+            tithiIdx,
+            nakshatraIdx,
+            yogaIdx,
+            halfTithi,
+            jdSunrise,
+            jdNextSunrise,
+            jdDayStart,
+            moonriseMins,
+            moonsetMins);
+
+        return panchang;
     }
 
     public static AstronomicalAngles ComputeAstronomicalSnapshot(double jd)
@@ -689,7 +735,7 @@ public class VedicPanchangCalculator
             Id = $"{id}-{date:yyyy}",
             NameHindi = hindi,
             NameEnglish = english,
-            Date = date,
+            Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Unspecified),
             Tithi = tithi,
             MonthVedic = monthVedic,
             Description = desc,
@@ -697,7 +743,10 @@ public class VedicPanchangCalculator
             FastingRules = fasting,
             IsMajorFestival = isMajor,
             Category = category,
-            IsDynamicCalculated = true
+            IsDynamicCalculated = true,
+            IsVerified = true,
+            VerificationSource = "Lahiri Chitrapaksha Tithi Engine",
+            VerificationUrl = "https://www.drikpanchang.com/"
         });
     }
 
@@ -823,7 +872,7 @@ public class VedicPanchangCalculator
         return (jdStart - jdDayStart) * 1440.0 + tzOffsetHours * 60.0 + 720.0;
     }
 
-    private static (string Moonrise, string Moonset) ComputeMoonRiseSetDisplay(
+    private static (string Moonrise, string Moonset, double? RiseMins, double? SetMins) ComputeMoonRiseSetDisplay(
         DateTime dateOnly,
         double latDeg,
         double lonDeg,
@@ -842,7 +891,15 @@ public class VedicPanchangCalculator
         {
             // Lunar day averages 24h50m, so occasionally moonrise slips just past midnight into the early next morning
             double? nextMorningRise = FindHorizonCrossing(jdMidnightLocal, latDeg, lonDeg, 1440, 1620, rising: true);
-            riseStr = nextMorningRise.HasValue ? $"{FormatTimeOfDay(nextMorningRise.Value)} (+1d)" : "No Moonrise";
+            if (nextMorningRise.HasValue)
+            {
+                riseMins = nextMorningRise.Value;
+                riseStr = $"{FormatTimeOfDay(nextMorningRise.Value)} (+1d)";
+            }
+            else
+            {
+                riseStr = "No Moonrise";
+            }
         }
 
         string setStr;
@@ -853,10 +910,18 @@ public class VedicPanchangCalculator
         else
         {
             double? nextMorningSet = FindHorizonCrossing(jdMidnightLocal, latDeg, lonDeg, 1440, 1620, rising: false);
-            setStr = nextMorningSet.HasValue ? $"{FormatTimeOfDay(nextMorningSet.Value)} (+1d)" : "No Moonset";
+            if (nextMorningSet.HasValue)
+            {
+                setMins = nextMorningSet.Value;
+                setStr = $"{FormatTimeOfDay(nextMorningSet.Value)} (+1d)";
+            }
+            else
+            {
+                setStr = "No Moonset";
+            }
         }
 
-        return (riseStr, setStr);
+        return (riseStr, setStr, riseMins, setMins);
     }
 
     private static double? FindHorizonCrossing(
@@ -940,35 +1005,8 @@ public class VedicPanchangCalculator
         double longitudeDeg,
         double tzOffsetHours)
     {
-        int n = date.DayOfYear;
-        double gamma = (2.0 * Math.PI / 365.0) * (n - 1);
-
-        double eqTime = 229.18 * (
-            0.000075
-            + 0.001868 * Math.Cos(gamma)
-            - 0.032077 * Math.Sin(gamma)
-            - 0.014615 * Math.Cos(2 * gamma)
-            - 0.040849 * Math.Sin(2 * gamma));
-
-        double decl = 0.006918
-            - 0.399912 * Math.Cos(gamma)
-            + 0.070257 * Math.Sin(gamma)
-            - 0.006758 * Math.Cos(2 * gamma)
-            + 0.000907 * Math.Sin(2 * gamma)
-            - 0.002697 * Math.Cos(3 * gamma)
-            + 0.001480 * Math.Sin(3 * gamma);
-
-        double latRad = latitudeDeg * Deg2Rad;
-        double zenithRad = 90.833 * Deg2Rad;
-        double cosHa = (Math.Cos(zenithRad) / (Math.Cos(latRad) * Math.Cos(decl))) - (Math.Tan(latRad) * Math.Tan(decl));
-        cosHa = Math.Clamp(cosHa, -0.98, 0.98);
-        double haDeg = Math.Acos(cosHa) * Rad2Deg;
-
-        double solarNoonUtcMins = 720.0 - (4.0 * longitudeDeg) - eqTime;
-        double tzMins = tzOffsetHours * 60.0;
-        double sunrise = solarNoonUtcMins - (4.0 * haDeg) + tzMins;
-        double sunset = solarNoonUtcMins + (4.0 * haDeg) + tzMins;
-
+        var (sunrise, sunset, _, _, _) =
+            VedicExtendedEngine.ComputeSunHorizonEvents(date.Date, latitudeDeg, longitudeDeg, tzOffsetHours);
         return (sunrise, sunset);
     }
 

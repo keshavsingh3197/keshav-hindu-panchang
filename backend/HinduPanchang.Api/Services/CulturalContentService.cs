@@ -13,34 +13,61 @@ public class CulturalContentService
 
     private readonly HybridDataStore _store;
     private readonly CentralAdminConfigReader? _centralReader;
+    private readonly VerifiedOnThisDayService? _verifiedHistory;
 
-    public CulturalContentService(HybridDataStore store, CentralAdminConfigReader? centralReader = null)
+    public CulturalContentService(
+        HybridDataStore store,
+        CentralAdminConfigReader? centralReader = null,
+        VerifiedOnThisDayService? verifiedHistory = null)
     {
         _store = store;
         _centralReader = centralReader;
+        _verifiedHistory = verifiedHistory;
     }
 
     public string StorageMode => _store.StorageMode;
 
     // ---- Historical Incidents ----
 
-    public async Task<List<HistoricalIncident>> GetIncidentsForDateAsync(DateTime date)
+    public async Task<List<HistoricalIncident>> GetIncidentsForDateAsync(DateTime date, CancellationToken ct = default)
     {
         var all = await GetAllIncidentsAsync();
         string key = date.ToString("MM-dd");
+
+        // Include exact-date curated seed items even if DB was initialized before newer dates were added.
         var matches = all
-            .Where(i => i.DateKey == key)
+            .Where(i => string.Equals(i.DateKey, key, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(i => i.Year)
             .Select(i => CloneIncident(i, exact: true))
             .ToList();
-        if (matches.Count > 0) return matches;
 
-        // If no exact MM-dd entry exists, return a deterministic heritage archive selection explicitly flagged as non-exact
-        if (all.Count == 0) return [];
-        int offset = Math.Abs(date.DayOfYear) % all.Count;
-        return all.Skip(offset).Concat(all.Take(offset))
-            .Take(Math.Min(4, all.Count))
-            .Select(i => CloneIncident(i, exact: false))
+        foreach (var seed in PanchangSeedData.DefaultIncidents().Where(s => string.Equals(s.DateKey, key, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (!matches.Any(m => string.Equals(m.Id, seed.Id, StringComparison.OrdinalIgnoreCase)
+                || (m.Year == seed.Year && string.Equals(m.Title, seed.Title, StringComparison.OrdinalIgnoreCase))))
+            {
+                matches.Add(CloneIncident(seed, exact: true));
+            }
+        }
+
+        if (_verifiedHistory is not null)
+        {
+            var wikiEvents = await _verifiedHistory.GetForMonthDayAsync(date.Month, date.Day, ct).ConfigureAwait(false);
+            foreach (var w in wikiEvents)
+            {
+                if (!matches.Any(m => m.Year == w.Year &&
+                    m.Title.Contains(w.Title[..Math.Min(20, w.Title.Length)], StringComparison.OrdinalIgnoreCase)))
+                {
+                    matches.Add(w);
+                }
+            }
+        }
+
+        // Strict accuracy policy: never substitute events from other calendar dates as "Today in History".
+        return matches
+            .OrderBy(i => string.Equals(i.Category, "Indian History", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(i.Category, "Freedom Struggle", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenByDescending(i => i.Year)
             .ToList();
     }
 
@@ -54,7 +81,12 @@ public class CulturalContentService
         Description = src.Description,
         CulturalSignificance = src.CulturalSignificance,
         RelatedVideoUrl = src.RelatedVideoUrl,
-        IsExactDateMatch = exact
+        IsExactDateMatch = exact,
+        IsVerified = src.IsVerified,
+        SourceName = string.IsNullOrWhiteSpace(src.SourceName) ? "HinduPanchang Verified Archive" : src.SourceName,
+        SourceUrl = string.IsNullOrWhiteSpace(src.SourceUrl)
+            ? $"https://en.wikipedia.org/wiki/{src.DateKey.Replace('-', '_')}"
+            : src.SourceUrl
     };
 
     public async Task<List<HistoricalIncident>> GetAllIncidentsAsync()
@@ -100,14 +132,15 @@ public class CulturalContentService
 
     // ---- Festivals (Astronomically Computed + Admin Custom Merges) ----
 
-    public async Task<List<FestivalItem>> GetUpcomingFestivalsAsync()
+    public async Task<List<FestivalItem>> GetUpcomingFestivalsAsync(DateTime? anchorDate = null)
     {
+        var effectiveStart = (anchorDate?.Date ?? VerifiedOnThisDayService.IstNow().Date).AddDays(-2);
         var customSaved = await _store.GetListAsync(FestivalsCollection, PanchangSeedData.DefaultFestivals);
-        var computed = VedicPanchangCalculator.ComputeDynamicFestivalsForWindow(DateTime.UtcNow.Date.AddDays(-2), 365);
+        var computed = VedicPanchangCalculator.ComputeDynamicFestivalsForWindow(effectiveStart, 365);
 
-        // Filter out legacy fake f-1..f-4 seed entries from older Mongo deployments that used relative today.AddDays()
+        // Filter out legacy fake f-1..f-4 seed entries or outdated merged Devutthana+TulsiVivah rows
         var customClean = customSaved
-            .Where(f => !IsLegacyFakeSeedFestival(f))
+            .Where(f => !IsLegacyFakeSeedFestival(f) && f.Date.Date >= effectiveStart)
             .ToList();
 
         var merged = new List<FestivalItem>(computed);
@@ -121,11 +154,12 @@ public class CulturalContentService
     }
 
     private static bool IsLegacyFakeSeedFestival(FestivalItem f) =>
-        f.Id is "f-1" or "f-2" or "f-3" or "f-4" && !f.IsDynamicCalculated &&
-        (f.Description.StartsWith("Marks the awakening of Lord Vishnu", StringComparison.Ordinal) ||
-         f.Description.StartsWith("Sacred ceremonial union of Vrinda", StringComparison.Ordinal) ||
-         f.Description.StartsWith("Celebrates Lord Shiva's victory", StringComparison.Ordinal) ||
-         f.Description.StartsWith("Commemorates the sacred day Bhagavan", StringComparison.Ordinal));
+        (f.Id is "f-1" or "f-2" or "f-3" or "f-4" && !f.IsDynamicCalculated &&
+         (f.Description.StartsWith("Marks the awakening of Lord Vishnu", StringComparison.Ordinal) ||
+          f.Description.StartsWith("Sacred ceremonial union of Vrinda", StringComparison.Ordinal) ||
+          f.Description.StartsWith("Celebrates Lord Shiva's victory", StringComparison.Ordinal) ||
+          f.Description.StartsWith("Commemorates the sacred day Bhagavan", StringComparison.Ordinal)))
+        || (!f.IsDynamicCalculated && f.NameHindi.Contains("देवुत्थान एकादशी (तुलसी विवाह)", StringComparison.Ordinal));
 
     public async Task<FestivalItem> UpsertFestivalAsync(FestivalItem festival)
     {
