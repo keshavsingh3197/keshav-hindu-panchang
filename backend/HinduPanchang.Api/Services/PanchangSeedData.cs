@@ -6,14 +6,14 @@ public static class PanchangSeedData
 {
     public static List<PanchangCity> DefaultCities() =>
     [
-        new() { Id = "city-del", Name = "New Delhi, India", LabelHindi = "नई दिल्ली (New Delhi)", Country = "India", Latitude = 28.6139, Longitude = 77.2090, TimezoneOffsetHours = 5.5, IsActive = true },
-        new() { Id = "city-vns", Name = "Varanasi, India", LabelHindi = "काशी / वाराणसी (Varanasi)", Country = "India", Latitude = 25.3176, Longitude = 82.9739, TimezoneOffsetHours = 5.5, IsActive = true },
-        new() { Id = "city-ayo", Name = "Ayodhya, India", LabelHindi = "अयोध्या (Ayodhya)", Country = "India", Latitude = 26.7922, Longitude = 82.1998, TimezoneOffsetHours = 5.5, IsActive = true },
-        new() { Id = "city-bom", Name = "Mumbai, India", LabelHindi = "मुंबई (Mumbai)", Country = "India", Latitude = 19.0760, Longitude = 72.8777, TimezoneOffsetHours = 5.5, IsActive = true },
-        new() { Id = "city-blr", Name = "Bengaluru, India", LabelHindi = "बेंगलुरु (Bengaluru)", Country = "India", Latitude = 12.9716, Longitude = 77.5946, TimezoneOffsetHours = 5.5, IsActive = true },
-        new() { Id = "city-jai", Name = "Jaipur, India", LabelHindi = "जयपुर (Jaipur)", Country = "India", Latitude = 26.9124, Longitude = 75.7873, TimezoneOffsetHours = 5.5, IsActive = true },
-        new() { Id = "city-lon", Name = "London, UK", LabelHindi = "लंदन (London, UK)", Country = "UK", Latitude = 51.5072, Longitude = -0.1276, TimezoneOffsetHours = 0.0, IsActive = true },
-        new() { Id = "city-nyc", Name = "New York, USA", LabelHindi = "न्यूयॉर्क (New York, USA)", Country = "USA", Latitude = 40.7128, Longitude = -74.0060, TimezoneOffsetHours = -5.0, IsActive = true }
+        new() { Id = "city-del", Name = "New Delhi, India", LabelHindi = "नई दिल्ली (New Delhi)", State = "Delhi", Country = "India", Latitude = 28.6139, Longitude = 77.2090, ElevationMeters = 216, TimeZoneId = "Asia/Kolkata", TimezoneOffsetHours = 5.5, IsActive = true },
+        new() { Id = "city-vns", Name = "Varanasi, India", LabelHindi = "काशी / वाराणसी (Varanasi)", State = "Uttar Pradesh", Country = "India", Latitude = 25.3176, Longitude = 82.9739, ElevationMeters = 80, TimeZoneId = "Asia/Kolkata", TimezoneOffsetHours = 5.5, IsActive = true },
+        new() { Id = "city-ayo", Name = "Ayodhya, India", LabelHindi = "अयोध्या (Ayodhya)", State = "Uttar Pradesh", Country = "India", Latitude = 26.7922, Longitude = 82.1998, ElevationMeters = 93, TimeZoneId = "Asia/Kolkata", TimezoneOffsetHours = 5.5, IsActive = true },
+        new() { Id = "city-bom", Name = "Mumbai, India", LabelHindi = "मुंबई (Mumbai)", State = "Maharashtra", Country = "India", Latitude = 19.0760, Longitude = 72.8777, ElevationMeters = 14, TimeZoneId = "Asia/Kolkata", TimezoneOffsetHours = 5.5, IsActive = true },
+        new() { Id = "city-blr", Name = "Bengaluru, India", LabelHindi = "बेंगलुरु (Bengaluru)", State = "Karnataka", Country = "India", Latitude = 12.9716, Longitude = 77.5946, ElevationMeters = 920, TimeZoneId = "Asia/Kolkata", TimezoneOffsetHours = 5.5, IsActive = true },
+        new() { Id = "city-jai", Name = "Jaipur, India", LabelHindi = "जयपुर (Jaipur)", State = "Rajasthan", Country = "India", Latitude = 26.9124, Longitude = 75.7873, ElevationMeters = 431, TimeZoneId = "Asia/Kolkata", TimezoneOffsetHours = 5.5, IsActive = true },
+        new() { Id = "city-lon", Name = "London, UK", LabelHindi = "लंदन (London, UK)", State = "England", Country = "UK", Latitude = 51.5072, Longitude = -0.1276, ElevationMeters = 11, TimeZoneId = "Europe/London", TimezoneOffsetHours = 0.0, UsesDst = true, IsActive = true },
+        new() { Id = "city-nyc", Name = "New York, USA", LabelHindi = "न्यूयॉर्क (New York, USA)", State = "New York", Country = "USA", Latitude = 40.7128, Longitude = -74.0060, ElevationMeters = 10, TimeZoneId = "America/New_York", TimezoneOffsetHours = -5.0, UsesDst = true, IsActive = true }
     ];
 
     public static List<DailySutra> DefaultSutras() =>

@@ -5,10 +5,14 @@ public class PanchangCity
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string LabelHindi { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
     public string Country { get; set; } = "India";
     public double Latitude { get; set; } = 28.6139;
     public double Longitude { get; set; } = 77.2090;
+    public double ElevationMeters { get; set; } = 0;
+    public string TimeZoneId { get; set; } = "Asia/Kolkata";
     public double TimezoneOffsetHours { get; set; } = 5.5;
+    public bool UsesDst { get; set; }
     public bool IsActive { get; set; } = true;
 }
 

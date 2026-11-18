@@ -22,21 +22,37 @@ export class PanchangService {
   private api = environment.apiUrl;
   readonly siteConfig = signal<PanchangSiteConfig | null>(null);
 
-  getDailyPanchang(date?: string, location: string = 'New Delhi, India'): Observable<PanchangData> {
-    const query = date
-      ? `?date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`
-      : `?location=${encodeURIComponent(location)}`;
+  getDailyPanchang(
+    date?: string,
+    location: string = 'New Delhi, India',
+    coords?: { lat?: number; lon?: number; tz?: string }
+  ): Observable<PanchangData> {
+    const params: string[] = [];
+    if (date) params.push(`date=${encodeURIComponent(date)}`);
+    if (location) params.push(`location=${encodeURIComponent(location)}`);
+    if (coords?.lat !== undefined && coords?.lon !== undefined) {
+      params.push(`lat=${encodeURIComponent(String(coords.lat))}`);
+      params.push(`lon=${encodeURIComponent(String(coords.lon))}`);
+      if (coords.tz) params.push(`tz=${encodeURIComponent(coords.tz)}`);
+    }
+    const query = params.length ? `?${params.join('&')}` : '';
     return this.http.get<PanchangData>(`${this.api}/panchang/daily${query}`);
   }
 
   getCities(): Observable<PanchangCity[]> {
     return this.http.get<PanchangCity[]>(`${this.api}/panchang/cities`).pipe(
       catchError(() => of([
-        { id: 'city-del', name: 'New Delhi, India', labelHindi: 'नई दिल्ली (New Delhi)', country: 'India', latitude: 28.6139, longitude: 77.209, timezoneOffsetHours: 5.5, isActive: true },
-        { id: 'city-vns', name: 'Varanasi, India', labelHindi: 'काशी / वाराणसी (Varanasi)', country: 'India', latitude: 25.3176, longitude: 82.9739, timezoneOffsetHours: 5.5, isActive: true },
-        { id: 'city-bom', name: 'Mumbai, India', labelHindi: 'मुंबई (Mumbai)', country: 'India', latitude: 19.076, longitude: 72.8777, timezoneOffsetHours: 5.5, isActive: true }
+        { id: 'city-del', name: 'New Delhi, India', labelHindi: 'नई दिल्ली (New Delhi)', country: 'India', latitude: 28.6139, longitude: 77.209, timeZoneId: 'Asia/Kolkata', timezoneOffsetHours: 5.5, isActive: true },
+        { id: 'city-vns', name: 'Varanasi, India', labelHindi: 'काशी / वाराणसी (Varanasi)', country: 'India', latitude: 25.3176, longitude: 82.9739, timeZoneId: 'Asia/Kolkata', timezoneOffsetHours: 5.5, isActive: true },
+        { id: 'city-bom', name: 'Mumbai, India', labelHindi: 'मुंबई (Mumbai)', country: 'India', latitude: 19.076, longitude: 72.8777, timeZoneId: 'Asia/Kolkata', timezoneOffsetHours: 5.5, isActive: true }
       ]))
     );
+  }
+
+  searchCities(query: string, limit: number = 15): Observable<PanchangCity[]> {
+    return this.http
+      .get<PanchangCity[]>(`${this.api}/panchang/cities/search?q=${encodeURIComponent(query ?? '')}&limit=${limit}`)
+      .pipe(catchError(() => of([])));
   }
 
   getSiteConfig(): Observable<PanchangSiteConfig> {

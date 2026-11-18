@@ -587,4 +587,62 @@ public class HinduPanchangTests
             if (Directory.Exists(root)) Directory.Delete(root, true);
         }
     }
+
+    [Fact]
+    public async Task VedicPanchangCalculator_ExtendedPrecision_And_GlobalDstCities_MatchAstronomicalReference()
+    {
+        var root = CreateTempRoot();
+        try
+        {
+            var calc = new VedicPanchangCalculator(CreateStore(root));
+
+            // 1. 2026-11-18 New Delhi (Drik benchmark: Sunrise 06:46 AM, Sunset 05:26 PM, Navami, Shatabhisha, Dhruva, Brahma 04:59-05:53 AM)
+            var del = await calc.CalculateForDateAsync(new DateTime(2026, 11, 18), "New Delhi, India");
+            Assert.Equal("06:46 AM", del.Sunrise);
+            Assert.Contains("05:2", del.Sunset);
+            Assert.Equal("Shukla Navami", del.Tithi);
+            Assert.Equal("Shatabhisha", del.Nakshatra);
+            Assert.Equal("Dhruva", del.Yoga);
+            Assert.Contains("Avoided", del.AbhijitMuhurat);
+            Assert.Contains("04:5", del.BrahmaMuhurat);
+            Assert.Contains("05:5", del.BrahmaMuhurat);
+            Assert.Contains("10:3", del.AmritKaal); // Shatabhisha Amrit Kalam ~10:31 PM - 12:14 AM (Drik: 10:29 PM - 12:12 AM)
+            Assert.Contains("12:1", del.Extended.Varjyam); // Shatabhisha Varjyam ~12:17 PM - 02:00 PM (Drik: 12:15 PM - 01:57 PM)
+            Assert.Equal("10h 40m", del.Extended.Dinamana[..7]);
+            Assert.Equal("Shukla Dashami", del.Extended.NextTithi);
+            Assert.Equal("Purva Bhadrapada", del.Extended.NextNakshatra);
+            Assert.Equal(4, del.Extended.NakshatraPadas.Count(p => p.Name.StartsWith("Shatabhisha")));
+            Assert.Equal(12, del.DayHora.Count);
+            Assert.Equal(12, del.NightHora.Count);
+            Assert.True(del.UdayaLagnas.Count >= 12);
+            Assert.Contains("Vrischika", del.UdayaLagnas[0].Name); // Rising Scorpio sign at mid-Nov Sunrise
+            Assert.True(del.Timeline.TithiBars.Count >= 1);
+            Assert.True(del.Extended.Credits.Count >= 4);
+
+            // 2. Global city + Automatic IANA DST (New York City winter EST -5 vs summer EDT -4)
+            var nycWinter = await calc.CalculateForDateAsync(new DateTime(2026, 11, 18), "New York City, USA");
+            Assert.Equal("America/New_York", nycWinter.LocationMeta.TimeZoneId);
+            Assert.Equal(-5.0, nycWinter.LocationMeta.EffectiveUtcOffsetHours);
+            Assert.False(nycWinter.LocationMeta.IsDaylightSavingActive);
+            Assert.Equal("Shukla Navami", nycWinter.Tithi);
+            Assert.Contains(nycWinter.Extended.TithiTransitions, t => t.Name == "Shukla Dashami"); // Transitions in NYC evening ~8:35 PM
+
+            var nycSummer = await calc.CalculateForDateAsync(new DateTime(2026, 7, 15), "New York City, USA");
+            Assert.Equal("America/New_York", nycSummer.LocationMeta.TimeZoneId);
+            Assert.Equal(-4.0, nycSummer.LocationMeta.EffectiveUtcOffsetHours);
+            Assert.True(nycSummer.LocationMeta.IsDaylightSavingActive);
+
+            // 3. Offline global city catalog search + Custom Coordinate resolution
+            var matches = await calc.SearchCitiesAsync("Ujjain");
+            Assert.Contains(matches, c => c.Name.Contains("Ujjain", StringComparison.OrdinalIgnoreCase));
+            var custom = await calc.CalculateForDateAsync(new DateTime(2026, 11, 18), "Kedarnath Shrine", lat: 30.7346, lon: 79.0669, tz: "Asia/Kolkata");
+            Assert.Equal("Kedarnath Shrine", custom.Location);
+            Assert.Equal(30.7346, custom.LocationMeta.Latitude, 3);
+            Assert.Equal("Asia/Kolkata", custom.LocationMeta.TimeZoneId);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
 }
